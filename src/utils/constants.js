@@ -8,6 +8,7 @@ export const ENDPOINTS = {
   CREATE_TRAINER: '/api/auth/create/trainer',
   TRAINER_FORGOT_PASSWORD: '/api/auth/trainer/forgot-password',
   TRAINER_RESET_PASSWORD: '/api/auth/trainer/reset-password',
+  CHANGE_TRAINER_PASSWORD: '/api/auth/trainers/me/password',
   
 
   // Users

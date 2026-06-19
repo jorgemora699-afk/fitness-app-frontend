@@ -34,7 +34,7 @@ export default function TrainerResetPasswordScreen({ navigation }) {
     setLoading(true);
     try {
       await client.post(ENDPOINTS.TRAINER_FORGOT_PASSWORD, { email });
-      Alert.alert('¡Listo!', 'Código enviado a tu correo');
+      Alert.alert('¡Listo!', 'Código enviado al correo del administrador');
       setStep(2);
     } catch (error) {
       Alert.alert('Error', error.response?.data?.error || 'No se pudo enviar el código');
@@ -111,9 +111,9 @@ export default function TrainerResetPasswordScreen({ navigation }) {
           <View style={styles.formContainer}>
             {step === 1 ? (
               <>
-                <Text style={styles.stepTitle}>Ingresa tu correo</Text>
+                <Text style={styles.stepTitle}>Recupera tu contraseña</Text>
                 <Text style={styles.stepSubtitle}>
-                  Te enviaremos un código de verificación a tu correo registrado
+                  Ingresa tu correo registrado. El código de verificación será enviado al administrador, quien te lo compartirá para continuar.
                 </Text>
 
                 <View style={styles.inputContainer}>

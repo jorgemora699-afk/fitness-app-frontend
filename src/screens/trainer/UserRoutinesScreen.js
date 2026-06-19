@@ -203,7 +203,8 @@ function RoutineCard({ routine, onDelete, onArchive, onUnarchive }) {
       setCopyingRoutine(false);
       setCopyUserId(null);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo copiar la rutina');
+      const message = error.response?.data?.error || 'No se pudo copiar la rutina';
+      Alert.alert('Error', message);
     } finally {
       setSaving(false);
     }

@@ -28,6 +28,11 @@ export default function TrainerProfileScreen({ navigation }) {
     name: user?.name || '',
     phone: user?.phone || '',
   });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -111,6 +116,35 @@ export default function TrainerProfileScreen({ navigation }) {
       Alert.alert('Error', 'No se pudo actualizar el perfil');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.current_password || !passwordForm.new_password || !passwordForm.confirm_password) {
+      Alert.alert('Error', 'Completa todos los campos');
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+    if (passwordForm.new_password.length < 6) {
+      Alert.alert('Error', 'La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await client.put(ENDPOINTS.CHANGE_TRAINER_PASSWORD, {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      });
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+      setShowPasswordModal(false);
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar la contraseña');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -338,6 +372,16 @@ export default function TrainerProfileScreen({ navigation }) {
           )}
         </View>
 
+        {/* Cambiar contraseña */}
+        <TouchableOpacity
+          style={styles.passwordButton}
+          onPress={() => setShowPasswordModal(true)}
+        >
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.silver} />
+          <Text style={styles.passwordButtonText}>Cambiar contraseña</Text>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
         {/* Cerrar sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={22} color={COLORS.danger} />
@@ -346,6 +390,77 @@ export default function TrainerProfileScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Modal cambiar contraseña */}
+      <Modal visible={showPasswordModal} transparent animationType="slide">
+        <View style={styles.passwordModalOverlay}>
+          <View style={styles.passwordModalCard}>
+            <View style={styles.passwordModalHeader}>
+              <Text style={styles.passwordModalTitle}>Cambiar contraseña</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Contraseña actual"
+                placeholderTextColor={COLORS.textSecondary}
+                value={passwordForm.current_password}
+                onChangeText={(v) => setPasswordForm(prev => ({ ...prev, current_password: v }))}
+                secureTextEntry={!showCurrentPass}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowCurrentPass(!showCurrentPass)}>
+                <Ionicons name={showCurrentPass ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Nueva contraseña"
+                placeholderTextColor={COLORS.textSecondary}
+                value={passwordForm.new_password}
+                onChangeText={(v) => setPasswordForm(prev => ({ ...prev, new_password: v }))}
+                secureTextEntry={!showNewPass}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowNewPass(!showNewPass)}>
+                <Ionicons name={showNewPass ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirmar nueva contraseña"
+                placeholderTextColor={COLORS.textSecondary}
+                value={passwordForm.confirm_password}
+                onChangeText={(v) => setPasswordForm(prev => ({ ...prev, confirm_password: v }))}
+                secureTextEntry={!showNewPass}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleChangePassword}
+              disabled={changingPassword}
+            >
+              {changingPassword ? (
+                <ActivityIndicator color={COLORS.dark} />
+              ) : (
+                <Text style={styles.saveButtonText}>Actualizar contraseña</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -423,4 +538,11 @@ photoActionText: {
   marginLeft: 8,
   fontWeight: '600',
 },
+
+passwordButton: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border },
+passwordButtonText: { flex: 1, fontSize: 15, color: COLORS.text, fontWeight: '500' },
+passwordModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+passwordModalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+passwordModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+passwordModalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
 });
