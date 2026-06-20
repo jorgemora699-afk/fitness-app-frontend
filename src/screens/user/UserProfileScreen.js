@@ -329,6 +329,18 @@ export default function UserProfileScreen({ navigation }) {
               <Text style={styles.infoLabel}>Altura</Text>
               <Text style={styles.infoValue}>{profile?.height ? `${profile.height} cm` : '—'}</Text>
             </View>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Ionicons name="body-outline" size={18} color={COLORS.textSecondary} />
+              <Text style={styles.infoLabel}>Grasa corporal</Text>
+              <Text style={styles.infoValue}>{profile?.body_fat ? `${profile.body_fat}%` : '—'}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Ionicons name="barbell-outline" size={18} color={COLORS.textSecondary} />
+              <Text style={styles.infoLabel}>Masa muscular</Text>
+              <Text style={styles.infoValue}>{profile?.muscle_mass ? `${profile.muscle_mass} kg` : '—'}</Text>
+            </View>
             {profile?.goal && (
               <>
                 <View style={styles.divider} />

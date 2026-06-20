@@ -61,6 +61,20 @@ client.interceptors.response.use(
       await AsyncStorage.removeItem('token_expiry');
       triggerClearAuth();
     }
+
+    if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_DEACTIVATED') {
+      const { Alert } = require('react-native');
+      Alert.alert(
+        'Cuenta desactivada',
+        'Tu cuenta ha sido desactivada. Contacta al administrador.',
+        [{ text: 'OK' }]
+      );
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('role');
+      await AsyncStorage.removeItem('token_expiry');
+      triggerClearAuth();
+    }
     return Promise.reject(error);
   }
 );

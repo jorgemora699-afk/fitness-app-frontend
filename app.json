@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.jorgemora16.fittrack"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon1.png",
         "backgroundColor": "#0D0D0D"
@@ -32,6 +33,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
       ]
+      
     },
     "web": {
       "favicon": "./assets/favicon.png"

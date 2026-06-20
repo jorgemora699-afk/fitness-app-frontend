@@ -543,10 +543,14 @@ export default function UserDetailScreen({ route, navigation }) {
                     </View>
                     <View style={styles.scheduleRight}>
                       {sessionDone ? (
-                        <View style={styles.confirmedBadge}>
+                        <TouchableOpacity
+                          style={styles.confirmedBadge}
+                          onPress={() => navigation.navigate('WorkoutSession', { schedule: s, user })}
+                        >
                           <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
                           <Text style={[styles.badgeText, { color: COLORS.success }]}>Completado</Text>
-                        </View>
+                          <Ionicons name="chevron-forward" size={12} color={COLORS.success} />
+                        </TouchableOpacity>
                       ) : canStart ? (
                         <TouchableOpacity
                           style={styles.startButton}

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import ImageViewer from 'react-native-image-zoom-viewer';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
@@ -168,7 +169,7 @@ function MonthSection({ monthData, onPhotoPress, onDelete }) {
   );
 }
 
-function CompareModal({ visible, onClose, months }) {
+function CompareModal({ visible, onClose, months, onPhotoPress }) {
   const [period1, setPeriod1] = useState(null);
   const [period2, setPeriod2] = useState(null);
   const [comparison, setComparison] = useState(null);
@@ -280,11 +281,13 @@ function CompareModal({ visible, onClose, months }) {
                     {MONTHS_SHORT[comparison.period_1.month - 1]} {comparison.period_1.year}
                   </Text>
                   {comparison.period_1.photos[selectedAngle] ? (
-                    <Image
-                      source={{ uri: comparison.period_1.photos[selectedAngle].photo_url }}
-                      style={styles.comparePhoto}
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity onPress={() => onPhotoPress(comparison.period_1.photos[selectedAngle])}>
+                      <Image
+                        source={{ uri: comparison.period_1.photos[selectedAngle].photo_url }}
+                        style={styles.comparePhoto}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                   ) : (
                     <View style={[styles.comparePhoto, styles.emptyComparePhoto]}>
                       <Ionicons name="image-outline" size={32} color={COLORS.border} />
@@ -297,11 +300,13 @@ function CompareModal({ visible, onClose, months }) {
                     {MONTHS_SHORT[comparison.period_2.month - 1]} {comparison.period_2.year}
                   </Text>
                   {comparison.period_2.photos[selectedAngle] ? (
-                    <Image
-                      source={{ uri: comparison.period_2.photos[selectedAngle].photo_url }}
-                      style={styles.comparePhoto}
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity onPress={() => onPhotoPress(comparison.period_2.photos[selectedAngle])}>
+                      <Image
+                        source={{ uri: comparison.period_2.photos[selectedAngle].photo_url }}
+                        style={styles.comparePhoto}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                   ) : (
                     <View style={[styles.comparePhoto, styles.emptyComparePhoto]}>
                       <Ionicons name="image-outline" size={32} color={COLORS.border} />
@@ -443,20 +448,29 @@ export default function UserPhotosScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Preview modal */}
+      {/* Preview modal con zoom */}
       <Modal visible={!!previewPhoto} transparent animationType="fade" onRequestClose={() => setPreviewPhoto(null)}>
-        <View style={styles.previewOverlay}>
-          <TouchableOpacity style={styles.previewClose} onPress={() => setPreviewPhoto(null)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <TouchableOpacity
+            style={styles.previewClose}
+            onPress={() => setPreviewPhoto(null)}
+          >
             <Ionicons name="close-circle" size={32} color={COLORS.text} />
           </TouchableOpacity>
           {previewPhoto && (
-            <Image source={{ uri: previewPhoto.photo_url }} style={styles.previewImage} resizeMode="contain" />
+            <ImageViewer
+              imageUrls={[{ url: previewPhoto.photo_url }]}
+              enableSwipeDown
+              onSwipeDown={() => setPreviewPhoto(null)}
+              renderIndicator={() => null}
+              backgroundColor="#000"
+            />
           )}
         </View>
       </Modal>
 
       <UploadModal visible={showUpload} onClose={() => setShowUpload(false)} onUploaded={loadPhotos} />
-      <CompareModal visible={showCompare} onClose={() => setShowCompare(false)} months={months} />
+      <CompareModal visible={showCompare} onClose={() => setShowCompare(false)} months={months} onPhotoPress={setPreviewPhoto} />
     </View>
   );
 }
