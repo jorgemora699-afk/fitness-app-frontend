@@ -17,6 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import TimePickerModal from '../../components/TimePickerModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -321,12 +322,10 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-
   const [routines, setRoutines] = useState([]);
   const [loadingRoutines, setLoadingRoutines] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState(null);
   const [sessionType, setSessionType] = useState('Entrenamiento');
-
   const [date, setDate] = useState(selectedDate);
   const [dateObj, setDateObj] = useState(new Date(selectedDate + 'T12:00:00'));
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -335,9 +334,12 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
     new Date(new Date().setMonth(new Date().getMonth() + 3))
   );
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-
-  const [startTime, setStartTime] = useState(new Date());
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
   const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = React.useRef(false);
 
   const toggleDay = (day) => {
     if (repeatDays.includes(day)) {
@@ -347,16 +349,6 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
     }
   };
 
-  const [endTime, setEndTime] = useState(() => {
-    const d = new Date();
-    d.setHours(d.getHours() + 1);
-    return d;
-  });
-  const [showEndPicker, setShowEndPicker] = useState(false);
-
-  const [saving, setSaving] = useState(false);
-  const savingRef = React.useRef(false);
-
   useEffect(() => {
     if (visible) {
       setDate(selectedDate);
@@ -365,11 +357,12 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
       setSelectedRoutine(null);
       setRoutines([]);
       setSessionType('Entrenamiento');
+      setStartTime('08:00');
+      setEndTime('09:00');
       loadUsers();
     }
   }, [visible, selectedDate]);
 
-  // Cargar rutinas cuando se selecciona un usuario
   useEffect(() => {
     if (selectedUser) {
       setSelectedRoutine(null);
@@ -396,7 +389,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
   const loadRoutines = async (userId) => {
     setLoadingRoutines(true);
     try {
-      const res = await client.get(`${ENDPOINTS.GET_USER_ROUTINES(userId)}?active_only=true`);
+      const res = await client.get(ENDPOINTS.GET_USER_ROUTINES(userId));
       setRoutines(res.data.routines || []);
     } catch {
       setRoutines([]);
@@ -404,9 +397,6 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
       setLoadingRoutines(false);
     }
   };
-
-  const fmtTimeObj = (d) =>
-    `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
   const fmtRoutineDate = (dateStr) => {
     if (!dateStr) return '';
@@ -418,9 +408,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
   const handleSave = async () => {
     if (savingRef.current) return;
     if (!selectedUser) { Alert.alert('Error', 'Selecciona un usuario'); return; }
-    const start = fmtTimeObj(startTime);
-    const end = fmtTimeObj(endTime);
-    if (start >= end) { Alert.alert('Error', 'La hora de fin debe ser posterior al inicio'); return; }
+    if (startTime >= endTime) { Alert.alert('Error', 'La hora de fin debe ser posterior al inicio'); return; }
 
     savingRef.current = true;
     setSaving(true);
@@ -428,14 +416,13 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
       await client.post(ENDPOINTS.CREATE_SCHEDULE, {
         user_id: selectedUser.id,
         date,
-        start_time: start,
-        end_time: end,
+        start_time: startTime,
+        end_time: endTime,
         routine_id: selectedRoutine?.id || null,
         repeat_days: repeatDays,
         repeat_until: toISO(endRepeatDate),
         session_type: sessionType,
       });
-      console.log('session_type enviado:', sessionType);
       onCreated();
       onClose();
     } catch (error) {
@@ -492,48 +479,37 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
               <TouchableOpacity
                 style={styles.datePickerBtn}
                 onPress={() => setShowStartPicker(true)}
-                activeOpacity={0.7}
               >
                 <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{fmtTimeObj(startTime)}</Text>
+                <Text style={styles.datePickerText}>{startTime}</Text>
               </TouchableOpacity>
-              {showStartPicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  display="default"
-                  is24Hour
-                  onChange={(event, selected) => {
-                    setShowStartPicker(false);
-                    if (selected) setStartTime(selected);
-                  }}
-                />
-              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Fin</Text>
               <TouchableOpacity
                 style={styles.datePickerBtn}
                 onPress={() => setShowEndPicker(true)}
-                activeOpacity={0.7}
               >
                 <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{fmtTimeObj(endTime)}</Text>
+                <Text style={styles.datePickerText}>{endTime}</Text>
               </TouchableOpacity>
-              {showEndPicker && (
-                <DateTimePicker
-                  value={endTime}
-                  mode="time"
-                  display="default"
-                  is24Hour
-                  onChange={(event, selected) => {
-                    setShowEndPicker(false);
-                    if (selected) setEndTime(selected);
-                  }}
-                />
-              )}
             </View>
           </View>
+
+          <TimePickerModal
+            visible={showStartPicker}
+            value={startTime}
+            title="Hora de inicio"
+            onConfirm={(time) => setStartTime(time)}
+            onClose={() => setShowStartPicker(false)}
+          />
+          <TimePickerModal
+            visible={showEndPicker}
+            value={endTime}
+            title="Hora de fin"
+            onConfirm={(time) => setEndTime(time)}
+            onClose={() => setShowEndPicker(false)}
+          />
 
           {/* Usuario */}
           <Text style={styles.modalLabel}>Usuario</Text>
@@ -561,22 +537,18 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
             ))
           )}
 
-          {/* Rutinas — aparece solo si hay usuario seleccionado */}
+          {/* Rutinas */}
           {selectedUser && (
             <>
               <Text style={styles.modalLabel}>
-                Rutina{' '}
-                <Text style={styles.modalLabelOptional}>(opcional)</Text>
+                Rutina <Text style={styles.modalLabelOptional}>(opcional)</Text>
               </Text>
-
               {loadingRoutines ? (
                 <ActivityIndicator color={COLORS.silver} style={{ marginVertical: 10 }} />
               ) : routines.length === 0 ? (
                 <View style={styles.noRoutines}>
                   <Ionicons name="barbell-outline" size={18} color={COLORS.border} />
-                  <Text style={styles.noRoutinesText}>
-                    {selectedUser.name} no tiene rutinas registradas
-                  </Text>
+                  <Text style={styles.noRoutinesText}>{selectedUser.name} no tiene rutinas registradas</Text>
                 </View>
               ) : (
                 routines.map(r => (
@@ -592,9 +564,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
                       <Text style={styles.routineRowDate}>{fmtRoutineDate(r.date)}</Text>
                     </View>
                     <View style={styles.routineRowRight}>
-                      <Text style={styles.routineExCount}>
-                        {r.exercises?.length || 0} ej.
-                      </Text>
+                      <Text style={styles.routineExCount}>{r.exercises?.length || 0} ej.</Text>
                       {selectedRoutine?.id === r.id && (
                         <Ionicons name="checkmark-circle" size={18} color={COLORS.silver} />
                       )}
@@ -604,52 +574,28 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
               )}
             </>
           )}
-          <Text style={styles.modalLabel}>
-            Repetir semanalmente
-          </Text>
 
+          {/* Repetir */}
+          <Text style={styles.modalLabel}>Repetir semanalmente</Text>
           <View style={styles.repeatDaysContainer}>
             {WEEK_DAYS.map(day => (
               <TouchableOpacity
                 key={day.value}
-                style={[
-                  styles.repeatDayBtn,
-                  repeatDays.includes(day.value) &&
-                  styles.repeatDayBtnActive
-                ]}
+                style={[styles.repeatDayBtn, repeatDays.includes(day.value) && styles.repeatDayBtnActive]}
                 onPress={() => toggleDay(day.value)}
               >
-                <Text
-                  style={[
-                    styles.repeatDayText,
-                    repeatDays.includes(day.value) &&
-                    styles.repeatDayTextActive
-                  ]}
-                >
+                <Text style={[styles.repeatDayText, repeatDays.includes(day.value) && styles.repeatDayTextActive]}>
                   {day.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={styles.modalLabel}>
-            Repetir hasta
-          </Text>
 
-          <TouchableOpacity
-            style={styles.datePickerBtn}
-            onPress={() => setShowEndDatePicker(true)}
-          >
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={COLORS.textSecondary}
-            />
-
-            <Text style={styles.datePickerText}>
-              {fmtDate(toISO(endRepeatDate))}
-            </Text>
+          <Text style={styles.modalLabel}>Repetir hasta</Text>
+          <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowEndDatePicker(true)}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.datePickerText}>{fmtDate(toISO(endRepeatDate))}</Text>
           </TouchableOpacity>
-
           {showEndDatePicker && (
             <DateTimePicker
               value={endRepeatDate}
@@ -657,10 +603,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
               display="default"
               onChange={(event, selected) => {
                 setShowEndDatePicker(false);
-
-                if (selected) {
-                  setEndRepeatDate(selected);
-                }
+                if (selected) setEndRepeatDate(selected);
               }}
             />
           )}
@@ -698,7 +641,6 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
               )}
             </TouchableOpacity>
           </View>
-
           <View style={{ height: 20 }} />
         </ScrollView>
       </View>
@@ -713,17 +655,13 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
   const [dateObj, setDateObj] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [sessionType, setSessionType] = useState('Entrenamiento');
-
-  const [startTime, setStartTime] = useState(new Date());
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
   const [showStartPicker, setShowStartPicker] = useState(false);
-
-  const [endTime, setEndTime] = useState(new Date());
   const [showEndPicker, setShowEndPicker] = useState(false);
-
   const [routines, setRoutines] = useState([]);
   const [loadingRoutines, setLoadingRoutines] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState(null);
-
   const [saving, setSaving] = useState(false);
   const savingRef = React.useRef(false);
 
@@ -733,19 +671,9 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
       setDate(s.date);
       const [y, m, d] = s.date.split('-');
       setDateObj(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
-
-      const [sh, sm] = s.start_time.split(':');
-      const start = new Date();
-      start.setHours(parseInt(sh), parseInt(sm), 0);
-      setStartTime(start);
-
-      const [eh, em] = s.end_time.split(':');
-      const end = new Date();
-      end.setHours(parseInt(eh), parseInt(em), 0);
-      setEndTime(end);
-
+      setStartTime(s.start_time?.slice(0, 5) || '08:00');
+      setEndTime(s.end_time?.slice(0, 5) || '09:00');
       setSessionType(s.session_type || 'Entrenamiento');
-
       loadRoutines(item.user.id, s.routine_id);
     }
   }, [visible, item]);
@@ -764,9 +692,6 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
     }
   };
 
-  const fmtTimeObj = (d) =>
-    `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-
   const fmtRoutineDate = (dateStr) => {
     if (!dateStr) return '';
     const [, month, day] = dateStr.split('-');
@@ -776,29 +701,21 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
 
   const handleSave = async () => {
     if (savingRef.current) return;
-    const start = fmtTimeObj(startTime);
-    const end = fmtTimeObj(endTime);
-    if (start >= end) { Alert.alert('Error', 'La hora de fin debe ser posterior al inicio'); return; }
-
+    if (startTime >= endTime) { Alert.alert('Error', 'La hora de fin debe ser posterior al inicio'); return; }
     savingRef.current = true;
     setSaving(true);
     try {
       await client.put(ENDPOINTS.UPDATE_SCHEDULE(item.schedule.id), {
         date,
-        start_time: start,
-        end_time: end,
+        start_time: startTime,
+        end_time: endTime,
         routine_id: selectedRoutine?.id || null,
         session_type: sessionType,
       });
       onUpdated();
       onClose();
     } catch (error) {
-      const message =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        'No se pudo actualizar el horario';
-
-      Alert.alert('Error', message);
+      Alert.alert('Error', error?.response?.data?.error || 'No se pudo actualizar el horario');
     } finally {
       setSaving(false);
       savingRef.current = false;
@@ -822,11 +739,7 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
 
           {/* Fecha */}
           <Text style={styles.modalLabel}>Fecha</Text>
-          <TouchableOpacity
-            style={styles.datePickerBtn}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
             <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
             <Text style={styles.datePickerText}>{fmtDate(date)}</Text>
             <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
@@ -838,10 +751,7 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
               display="default"
               onChange={(event, selected) => {
                 setShowDatePicker(false);
-                if (selected) {
-                  setDateObj(selected);
-                  setDate(toISO(selected));
-                }
+                if (selected) { setDateObj(selected); setDate(toISO(selected)); }
               }}
             />
           )}
@@ -850,56 +760,37 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
           <View style={styles.timesRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Inicio</Text>
-              <TouchableOpacity
-                style={styles.datePickerBtn}
-                onPress={() => setShowStartPicker(true)}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowStartPicker(true)}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{fmtTimeObj(startTime)}</Text>
+                <Text style={styles.datePickerText}>{startTime}</Text>
               </TouchableOpacity>
-              {showStartPicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  display="default"
-                  is24Hour
-                  onChange={(event, selected) => {
-                    setShowStartPicker(false);
-                    if (selected) setStartTime(selected);
-                  }}
-                />
-              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Fin</Text>
-              <TouchableOpacity
-                style={styles.datePickerBtn}
-                onPress={() => setShowEndPicker(true)}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowEndPicker(true)}>
                 <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{fmtTimeObj(endTime)}</Text>
+                <Text style={styles.datePickerText}>{endTime}</Text>
               </TouchableOpacity>
-              {showEndPicker && (
-                <DateTimePicker
-                  value={endTime}
-                  mode="time"
-                  display="default"
-                  is24Hour
-                  onChange={(event, selected) => {
-                    setShowEndPicker(false);
-                    if (selected) setEndTime(selected);
-                  }}
-                />
-              )}
             </View>
           </View>
 
+          <TimePickerModal
+            visible={showStartPicker}
+            value={startTime}
+            title="Hora de inicio"
+            onConfirm={(time) => setStartTime(time)}
+            onClose={() => setShowStartPicker(false)}
+          />
+          <TimePickerModal
+            visible={showEndPicker}
+            value={endTime}
+            title="Hora de fin"
+            onConfirm={(time) => setEndTime(time)}
+            onClose={() => setShowEndPicker(false)}
+          />
+
           {/* Rutina */}
-          <Text style={styles.modalLabel}>
-            Rutina <Text style={styles.modalLabelOptional}>(opcional)</Text>
-          </Text>
+          <Text style={styles.modalLabel}>Rutina <Text style={styles.modalLabelOptional}>(opcional)</Text></Text>
           {loadingRoutines ? (
             <ActivityIndicator color={COLORS.silver} style={{ marginVertical: 10 }} />
           ) : routines.length === 0 ? (
@@ -915,16 +806,12 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
                 onPress={() => setSelectedRoutine(selectedRoutine?.id === r.id ? null : r)}
               >
                 <View style={styles.routineRowLeft}>
-                  <Text style={[styles.routineRowName, selectedRoutine?.id === r.id && styles.routineRowNameActive]}>
-                    {r.name}
-                  </Text>
+                  <Text style={[styles.routineRowName, selectedRoutine?.id === r.id && styles.routineRowNameActive]}>{r.name}</Text>
                   <Text style={styles.routineRowDate}>{fmtRoutineDate(r.date)}</Text>
                 </View>
                 <View style={styles.routineRowRight}>
                   <Text style={styles.routineExCount}>{r.exercises?.length || 0} ej.</Text>
-                  {selectedRoutine?.id === r.id && (
-                    <Ionicons name="checkmark-circle" size={18} color={COLORS.silver} />
-                  )}
+                  {selectedRoutine?.id === r.id && <Ionicons name="checkmark-circle" size={18} color={COLORS.silver} />}
                 </View>
               </TouchableOpacity>
             ))
@@ -939,9 +826,7 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
                 style={[styles.sessionTypeBtn, sessionType === type && styles.sessionTypeBtnActive]}
                 onPress={() => setSessionType(type)}
               >
-                <Text style={[styles.sessionTypeText, sessionType === type && styles.sessionTypeTextActive]}>
-                  {type}
-                </Text>
+                <Text style={[styles.sessionTypeText, sessionType === type && styles.sessionTypeTextActive]}>{type}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -956,11 +841,7 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
               onPress={handleSave}
               disabled={saving}
             >
-              {saving ? (
-                <ActivityIndicator size="small" color={COLORS.dark} />
-              ) : (
-                <Text style={styles.saveModalText}>Guardar</Text>
-              )}
+              {saving ? <ActivityIndicator size="small" color={COLORS.dark} /> : <Text style={styles.saveModalText}>Guardar</Text>}
             </TouchableOpacity>
           </View>
           <View style={{ height: 20 }} />
@@ -969,7 +850,6 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
     </Modal>
   );
 }
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function TrainerCalendarScreen({ navigation }) {

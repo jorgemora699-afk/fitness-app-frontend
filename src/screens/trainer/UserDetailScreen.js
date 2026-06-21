@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function UserDetailScreen({ route, navigation }) {
   const { user } = route.params;
@@ -30,11 +31,14 @@ export default function UserDetailScreen({ route, navigation }) {
   const [assignedWorkouts, setAssignedWorkouts] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [sessionHistory, setSessionHistory] = useState([]);
+  const [hiddenIds, setHiddenIds] = useState([]);
+  const storageKey = `hidden_schedules_${user.id}`;
   
 
   useEffect(() => {
     loadData();
-  }, []);
+    loadHiddenIds();
+  }, [])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -86,6 +90,26 @@ export default function UserDetailScreen({ route, navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const loadHiddenIds = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(storageKey);
+      setHiddenIds(stored ? JSON.parse(stored) : []);
+    } catch {
+      setHiddenIds([]);
+    }
+  };
+
+  const hideSchedule = async (scheduleId) => {
+    const updated = [...hiddenIds, scheduleId];
+    setHiddenIds(updated);
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+  };
+
+  const unhideAll = async () => {
+    setHiddenIds([]);
+    await AsyncStorage.removeItem(storageKey);
   };
 
   const [editing, setEditing] = useState(false);
@@ -510,6 +534,7 @@ export default function UserDetailScreen({ route, navigation }) {
           ) : (
             schedules
               .filter(s => !s.schedule.cancelled)
+              .filter(s => !hiddenIds.includes(s.schedule.id))
               .sort((a, b) => new Date(b.schedule.date) - new Date(a.schedule.date))
               .map((item) => {
                 const s = item.schedule;
@@ -523,7 +548,6 @@ export default function UserDetailScreen({ route, navigation }) {
 
                 const diffDays = Math.floor((today - scheduleDate) / (1000 * 60 * 60 * 24));
 
-                // El entrenador puede iniciar desde el día del entrenamiento hasta 7 días después
                 const canStart = s.routine_id && diffDays >= 0 && diffDays <= 7;
 
                 return (
@@ -543,14 +567,19 @@ export default function UserDetailScreen({ route, navigation }) {
                     </View>
                     <View style={styles.scheduleRight}>
                       {sessionDone ? (
-                        <TouchableOpacity
-                          style={styles.confirmedBadge}
-                          onPress={() => navigation.navigate('WorkoutSession', { schedule: s, user })}
-                        >
-                          <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                          <Text style={[styles.badgeText, { color: COLORS.success }]}>Completado</Text>
-                          <Ionicons name="chevron-forward" size={12} color={COLORS.success} />
-                        </TouchableOpacity>
+                        <View style={styles.badgeRow}>
+                          <TouchableOpacity
+                            style={styles.confirmedBadge}
+                            onPress={() => navigation.navigate('WorkoutSession', { schedule: s, user })}
+                          >
+                            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                            <Text style={[styles.badgeText, { color: COLORS.success }]}>Completado</Text>
+                            <Ionicons name="chevron-forward" size={12} color={COLORS.success} />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.hideBtn} onPress={() => hideSchedule(s.id)}>
+                            <Ionicons name="eye-off-outline" size={14} color={COLORS.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
                       ) : canStart ? (
                         <TouchableOpacity
                           style={styles.startButton}
@@ -560,9 +589,14 @@ export default function UserDetailScreen({ route, navigation }) {
                           <Text style={styles.startButtonText}>Iniciar</Text>
                         </TouchableOpacity>
                       ) : diffDays > 7 ? (
-                        <View style={styles.pendingBadge}>
-                          <Ionicons name="lock-closed-outline" size={12} color={COLORS.textSecondary} />
-                          <Text style={styles.badgeText}>Vencido</Text>
+                        <View style={styles.badgeRow}>
+                          <View style={styles.pendingBadge}>
+                            <Ionicons name="lock-closed-outline" size={12} color={COLORS.textSecondary} />
+                            <Text style={styles.badgeText}>Vencido</Text>
+                          </View>
+                          <TouchableOpacity style={styles.hideBtn} onPress={() => hideSchedule(s.id)}>
+                            <Ionicons name="eye-off-outline" size={14} color={COLORS.textSecondary} />
+                          </TouchableOpacity>
                         </View>
                       ) : (
                         <View style={styles.pendingBadge}>
@@ -573,6 +607,18 @@ export default function UserDetailScreen({ route, navigation }) {
                   </View>
                 );
               })
+          )}
+
+          {hiddenIds.length > 0 && (
+            <TouchableOpacity
+              style={styles.historyToggleBottom}
+              onPress={unhideAll}
+            >
+              <Ionicons name="eye-outline" size={14} color={COLORS.silver} />
+              <Text style={styles.historyToggleText}>
+                Mostrar ocultos ({hiddenIds.length})
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -654,6 +700,8 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       marginTop: 8,
     },
+
+    historyToggleBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: COLORS.darkGray, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, marginTop: 8 },
     statusBadgeCompleted: {
       backgroundColor: 'rgba(76,175,80,0.2)',
     },
@@ -668,6 +716,9 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
       color: COLORS.text,
     },
+
+    badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    hideBtn: { backgroundColor: COLORS.darkGray, padding: 6, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
 
     sessionDate: {
       fontSize: 12,
@@ -692,320 +743,323 @@ const styles = StyleSheet.create({
       color: COLORS.textSecondary,
       marginTop: 2,
     },
+    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    historyToggle: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.darkGray, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border },
+    historyToggleText: { fontSize: 11, color: COLORS.silver, fontWeight: '600' },
     saveButton: {
-    backgroundColor: COLORS.silver,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 5,
-    },
+      backgroundColor: COLORS.silver,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 5,
+      },
     saveButtonText: {
-    color: COLORS.dark,
-    fontSize: 16,
-    fontWeight: 'bold',
+      color: COLORS.dark,
+      fontSize: 16,
+      fontWeight: 'bold',
+      },
+    whatsappButton: {
+      backgroundColor: 'rgba(37, 211, 102, 0.1)',
+      padding: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(37, 211, 102, 0.3)',
     },
-  whatsappButton: {
-    backgroundColor: 'rgba(37, 211, 102, 0.1)',
-    padding: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(37, 211, 102, 0.3)',
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 25,
-  },
-  avatar: {
-    width: 85,
-    height: 85,
-    borderRadius: 42,
-    backgroundColor: COLORS.darkGray,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.silver,
-    marginBottom: 12,
-  },
-  avatarText: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: COLORS.silver,
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-  },
-  membershipBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  membershipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  membershipText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  editButton: {
-    backgroundColor: COLORS.card,
-    padding: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    profileSection: {
+      alignItems: 'center',
+      paddingVertical: 25,
     },
-  actionsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 25,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  actionText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 10,
-  },
-  infoCard: {
-    width: '47%',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 14,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  goalCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  goalTexts: {
-    flex: 1,
-  },
-  goalValue: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  imcCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  imcLeft: {
-    gap: 4,
-  },
-  imcValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  imcLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  imcBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  imcCategory: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  attendanceCard: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  attendanceStat: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  attendanceNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  attendanceLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  attendanceDivider: {
-    width: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 5,
-  },
-  progressCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  progressStat: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  progressValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  diffBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  diffText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emptyCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  emptyText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  scheduleCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  scheduleLeft: {
-    flex: 1,
-    gap: 3,
-  },
-  scheduleRight: {
-    marginLeft: 10,
-  },
-  scheduleDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    textTransform: 'capitalize',
-  },
-  scheduleTime: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  scheduleRoutine: {
-    fontSize: 11,
-    color: COLORS.silver,
-    marginTop: 2,
-  },
-  startButton: {
-    backgroundColor: COLORS.silver,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  startButtonText: {
-    color: COLORS.dark,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  confirmedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(76,175,80,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  pendingBadge: {
-    backgroundColor: COLORS.darkGray,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  badgeText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
+    avatar: {
+      width: 85,
+      height: 85,
+      borderRadius: 42,
+      backgroundColor: COLORS.darkGray,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: COLORS.silver,
+      marginBottom: 12,
+    },
+    avatarText: {
+      fontSize: 30,
+      fontWeight: 'bold',
+      color: COLORS.silver,
+    },
+    userName: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: COLORS.text,
+      marginBottom: 4,
+    },
+    userEmail: {
+      fontSize: 14,
+      color: COLORS.textSecondary,
+      marginBottom: 12,
+    },
+    membershipBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 6,
+    },
+    membershipDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    membershipText: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    editButton: {
+      backgroundColor: COLORS.card,
+      padding: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      },
+    actionsContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      gap: 10,
+      marginBottom: 25,
+    },
+    actionButton: {
+      flex: 1,
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 12,
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    actionText: {
+      fontSize: 11,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    section: {
+      paddingHorizontal: 20,
+      marginBottom: 25,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: COLORS.text,
+      marginBottom: 12,
+    },
+    infoGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: 10,
+    },
+    infoCard: {
+      width: '47%',
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 14,
+      gap: 5,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    infoLabel: {
+      fontSize: 12,
+      color: COLORS.textSecondary,
+    },
+    infoValue: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
+    goalCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 14,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    goalTexts: {
+      flex: 1,
+    },
+    goalValue: {
+      fontSize: 14,
+      color: COLORS.text,
+      marginTop: 2,
+    },
+    imcCard: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    imcLeft: {
+      gap: 4,
+    },
+    imcValue: {
+      fontSize: 28,
+      fontWeight: 'bold',
+    },
+    imcLabel: {
+      fontSize: 12,
+      color: COLORS.textSecondary,
+    },
+    imcBadge: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 12,
+    },
+    imcCategory: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    attendanceCard: {
+      flexDirection: 'row',
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    attendanceStat: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+    },
+    attendanceNumber: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: COLORS.text,
+    },
+    attendanceLabel: {
+      fontSize: 12,
+      color: COLORS.textSecondary,
+    },
+    attendanceDivider: {
+      width: 1,
+      backgroundColor: COLORS.border,
+      marginVertical: 5,
+    },
+    progressCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    progressStat: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    progressLabel: {
+      fontSize: 12,
+      color: COLORS.textSecondary,
+    },
+    progressValue: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: COLORS.text,
+    },
+    diffBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    diffText: {
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    emptyCard: {
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 16,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    emptyText: {
+      color: COLORS.textSecondary,
+      fontSize: 14,
+    },
+    scheduleCard: {
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    scheduleLeft: {
+      flex: 1,
+      gap: 3,
+    },
+    scheduleRight: {
+      marginLeft: 10,
+    },
+    scheduleDate: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.text,
+      textTransform: 'capitalize',
+    },
+    scheduleTime: {
+      fontSize: 12,
+      color: COLORS.textSecondary,
+    },
+    scheduleRoutine: {
+      fontSize: 11,
+      color: COLORS.silver,
+      marginTop: 2,
+    },
+    startButton: {
+      backgroundColor: COLORS.silver,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    startButtonText: {
+      color: COLORS.dark,
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    confirmedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(76,175,80,0.1)',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    pendingBadge: {
+      backgroundColor: COLORS.darkGray,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    badgeText: {
+      fontSize: 11,
+      color: COLORS.textSecondary,
+      fontWeight: '600',
+    },
 });
