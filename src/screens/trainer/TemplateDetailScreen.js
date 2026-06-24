@@ -12,9 +12,29 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+
+function VideoPlayerView({ videoUrl }) {
+  const player = useVideoPlayer(videoUrl, (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView
+      style={styles.videoPlayer}
+      player={player}
+      allowsFullscreen
+      allowsPictureInPicture
+      nativeControls
+    />
+  );
+}
+
 
 export default function TemplateDetailScreen({ route, navigation }) {
   const { templateId } = route.params;
@@ -34,6 +54,8 @@ export default function TemplateDetailScreen({ route, navigation }) {
   const [draftExercises, setDraftExercises] = useState([]);
 
   const [saving, setSaving] = useState(false);
+  const [uploadingVideoId, setUploadingVideoId] = useState(null);
+  const [visibleVideoId, setVisibleVideoId] = useState(null);
 
   const hasChanges =
     draftName !== name ||
@@ -60,6 +82,94 @@ export default function TemplateDetailScreen({ route, navigation }) {
       setLoading(false);
     }
   };
+
+  const handlePickVideo = async (exerciseId, fromCamera) => {
+  const permission = fromCamera
+    ? await ImagePicker.requestCameraPermissionsAsync()
+    : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (permission.status !== 'granted') {
+    Alert.alert('Permiso requerido', 'Se necesita acceso para continuar');
+    return;
+  }
+
+  const result = fromCamera
+    ? await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        videoMaxDuration: 10,
+        quality: 0.8,
+      })
+    : await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        videoMaxDuration: 10,
+        quality: 0.8,
+      });
+
+  if (!result.canceled) {
+    const asset = result.assets[0];
+    const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+
+    if (durationSeconds > 10.5) {
+      Alert.alert(
+        'Video muy largo',
+        `El video dura ${durationSeconds.toFixed(1)} segundos. El máximo permitido es 10 segundos. Por favor selecciona uno más corto.`
+      );
+      return;
+    }
+
+    uploadExerciseVideo(exerciseId, asset);
+  }
+};
+
+const uploadExerciseVideo = async (exerciseId, asset) => {
+  setUploadingVideoId(exerciseId);
+  try {
+    const form = new FormData();
+    form.append('video', {
+      uri: asset.uri,
+      name: 'exercise.mp4',
+      type: 'video/mp4',
+    });
+    const response = await client.post(
+      ENDPOINTS.UPLOAD_TEMPLATE_EXERCISE_VIDEO(exerciseId),
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    setExercises(prev =>
+      prev.map(ex => ex.id === exerciseId ? response.data.exercise : ex)
+    );
+    Alert.alert('Éxito', 'Video subido correctamente');
+  } catch (error) {
+    Alert.alert('Error', 'No se pudo subir el video');
+  } finally {
+    setUploadingVideoId(null);
+  }
+};
+
+const handleDeleteVideo = async (exerciseId) => {
+  Alert.alert(
+    'Eliminar video',
+    '¿Eliminar el video de este ejercicio?',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const response = await client.delete(ENDPOINTS.DELETE_TEMPLATE_EXERCISE_VIDEO(exerciseId));
+            setExercises(prev =>
+              prev.map(ex => ex.id === exerciseId ? response.data.exercise : ex)
+            );
+            setVisibleVideoId(null);
+          } catch (error) {
+            Alert.alert('Error', 'No se pudo eliminar el video');
+          }
+        }
+      }
+    ]
+  );
+};
 
   // Al activar edición: inicializar draft con los valores actuales
   const startEditing = () => {
@@ -312,6 +422,55 @@ export default function TemplateDetailScreen({ route, navigation }) {
                   <Text style={styles.notes}>{exercise.notes}</Text>
                 )
               )}
+
+              {!editing && (
+                <View style={styles.videoRow}>
+                  {exercise.video_url ? (
+                    <>
+                      <TouchableOpacity
+                        style={styles.videoBtn}
+                        onPress={() => setVisibleVideoId(visibleVideoId === exercise.id ? null : exercise.id)}
+                      >
+                        <Ionicons name="play-circle-outline" size={14} color={COLORS.silver} />
+                        <Text style={styles.videoBtnText}>
+                          {visibleVideoId === exercise.id ? 'Ocultar video' : 'Ver video'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteVideo(exercise.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.videoBtn}
+                      onPress={() => {
+                        Alert.alert('Subir video', '¿Cómo quieres agregar el video?', [
+                          { text: 'Cancelar', style: 'cancel' },
+                          { text: 'Grabar', onPress: () => handlePickVideo(exercise.id, true) },
+                          { text: 'Galería', onPress: () => handlePickVideo(exercise.id, false) },
+                        ]);
+                      }}
+                      disabled={uploadingVideoId === exercise.id}
+                    >
+                      {uploadingVideoId === exercise.id ? (
+                        <ActivityIndicator size="small" color={COLORS.silver} />
+                      ) : (
+                        <>
+                          <Ionicons name="videocam-outline" size={14} color={COLORS.silver} />
+                          <Text style={styles.videoBtnText}>Agregar video</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {!editing && visibleVideoId === exercise.id && exercise.video_url && (
+                <VideoPlayerView videoUrl={exercise.video_url} />
+              )}
             </View>
           ))}
         </View>
@@ -433,6 +592,11 @@ const styles = StyleSheet.create({
     color: COLORS.silver,
     fontWeight: '600'
   },
+
+  videoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  videoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.darkGray, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+  videoBtnText: { fontSize: 11, color: COLORS.silver, fontWeight: '500' },
+  videoPlayer: { width: '100%', height: 180, borderRadius: 10, marginTop: 8, backgroundColor: COLORS.dark },
 
   section: {
     paddingHorizontal: 20

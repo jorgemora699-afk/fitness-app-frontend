@@ -15,8 +15,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import { Modal } from 'react-native';
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const WEEKDAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -32,6 +34,54 @@ const fmt = (dateStr) => {
 
 const isToday = (dateStr) => dateStr === toISO(new Date());
 
+
+function VideoModal({ visible, videoUrl, onClose }) {
+  const player = useVideoPlayer(videoUrl || '', (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+          >
+            <Ionicons
+              name="close"
+              size={28}
+              color={COLORS.text}
+            />
+          </TouchableOpacity>
+
+          {videoUrl && (
+            <VideoView
+              style={{
+                width: '100%',
+                height: 300,
+                borderRadius: 12,
+              }}
+              player={player}
+              fullscreenOptions={{
+                enable: true
+              }}
+            />
+          )}
+
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function UserRoutineScreen({ navigation }) {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(toISO(new Date()));
@@ -45,6 +95,8 @@ export default function UserRoutineScreen({ navigation }) {
   const [logs, setLogs] = useState({});
   const [savingExercise, setSavingExercise] = useState(null);
   const savingRef = useRef(false);
+  const [videoVisible, setVideoVisible] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -70,6 +122,9 @@ export default function UserRoutineScreen({ navigation }) {
 
       const routines = myRoutinesRes.data.routines || [];
       const found = routines.find(r => r.id === todaySchedule.routine_id);
+      found?.exercises?.forEach(ex => {
+        console.log(ex.name, ex.video_url);
+      });
       setRoutine(found || null);
 
       const currentSession = sessionRes.data.session || null;
@@ -369,6 +424,26 @@ export default function UserRoutineScreen({ navigation }) {
                     <Text style={styles.exerciseNotes}>{ex.notes}</Text>
                   )}
 
+                  {ex.video_url && (
+                    <TouchableOpacity
+                      style={styles.videoButton}
+                      onPress={() => {
+                        setSelectedVideo(ex.video_url);
+                        setVideoVisible(true);
+                      }}
+                    >
+                      <Ionicons
+                        name="play-circle-outline"
+                        size={20}
+                        color={COLORS.silver}
+                      />
+
+                      <Text style={styles.videoButtonText}>
+                        Ver técnica
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   {/* Planeado */}
                   <View style={styles.statsRow}>
                     <Text style={styles.statsRowLabel}>Planeado</Text>
@@ -516,6 +591,15 @@ export default function UserRoutineScreen({ navigation }) {
         )}
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      <VideoModal
+        visible={videoVisible}
+        videoUrl={selectedVideo}
+        onClose={() => {
+          setVideoVisible(false);
+          setSelectedVideo(null);
+        }}
+      />
     </View>
   );
 }
@@ -576,5 +660,40 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     borderWidth: 2,
     borderColor: COLORS.silver,
+  },
+  videoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 10,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  videoButtonText: {
+    color: COLORS.silver,
+    fontWeight: '600',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 15,
+  },
+
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
   },
 });

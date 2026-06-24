@@ -14,6 +14,25 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import * as ImagePicker from 'expo-image-picker';
+
+function VideoPlayerView({ videoUrl }) {
+  const player = useVideoPlayer(videoUrl, (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView
+      style={styles.videoPlayer}
+      player={player}
+      allowsFullscreen
+      allowsPictureInPicture
+      nativeControls
+    />
+  );
+}
 
 function ExerciseRow({ ex, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
@@ -24,6 +43,9 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
     notes: ex.notes || ''
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(ex.video_url || null);
+  const [showVideo, setShowVideo] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -41,6 +63,89 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePickVideo = async (fromCamera) => {
+    const permission = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permission.status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Se necesita acceso para continuar');
+      return;
+    }
+
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+          videoMaxDuration: 10,
+          quality: 0.8,
+        })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+          videoMaxDuration: 10,
+          quality: 0.8,
+        });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+
+      if (durationSeconds > 10.5) {
+        Alert.alert(
+          'Video muy largo',
+          `El video dura ${durationSeconds.toFixed(1)} segundos. El máximo permitido es 10 segundos. Por favor selecciona uno más corto.`
+        );
+        return;
+      }
+
+      uploadVideo(asset);
+    }
+  };
+
+  const uploadVideo = async (asset) => {
+    setUploadingVideo(true);
+    try {
+      const form = new FormData();
+      form.append('video', {
+        uri: asset.uri,
+        name: 'exercise.mp4',
+        type: 'video/mp4',
+      });
+      const response = await client.post(ENDPOINTS.UPLOAD_EXERCISE_VIDEO(ex.id), form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setVideoUrl(response.data.video_url);
+      onUpdate(response.data.exercise);
+      Alert.alert('Éxito', 'Video subido correctamente');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo subir el video');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async () => {
+    Alert.alert(
+      'Eliminar video',
+      '¿Eliminar el video de este ejercicio?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await client.delete(ENDPOINTS.DELETE_EXERCISE_VIDEO(ex.id));
+              setVideoUrl(null);
+              onUpdate(response.data.exercise);
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar el video');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const confirmDelete = () => {
@@ -122,7 +227,59 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
       <View style={{ flex: 1 }}>
         <Text style={styles.exerciseName}>{ex.name}</Text>
         {ex.notes ? <Text style={styles.exerciseNotes}>{ex.notes}</Text> : null}
+
+        {/* Video section */}
+        <View style={styles.videoRow}>
+          {videoUrl ? (
+            <>
+              <TouchableOpacity
+                style={styles.videoBtn}
+                onPress={() => setShowVideo(!showVideo)}
+              >
+                <Ionicons name="play-circle-outline" size={14} color={COLORS.silver} />
+                <Text style={styles.videoBtnText}>
+                  {showVideo ? 'Ocultar video' : 'Ver video'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteVideo}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.videoUploadRow}>
+              <TouchableOpacity
+                style={styles.videoBtn}
+                onPress={() => {
+                  Alert.alert('Subir video', '¿Cómo quieres agregar el video?', [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Grabar', onPress: () => handlePickVideo(true) },
+                    { text: 'Galería', onPress: () => handlePickVideo(false) },
+                  ]);
+                }}
+                disabled={uploadingVideo}
+              >
+                {uploadingVideo ? (
+                  <ActivityIndicator size="small" color={COLORS.silver} />
+                ) : (
+                  <>
+                    <Ionicons name="videocam-outline" size={14} color={COLORS.silver} />
+                    <Text style={styles.videoBtnText}>Agregar video</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Video player */}
+        {showVideo && videoUrl && (
+          <VideoPlayerView videoUrl={videoUrl} />
+        )}
       </View>
+
       <Text style={[styles.exerciseCell, styles.tableCell]}>{ex.sets ?? '—'}</Text>
       <Text style={[styles.exerciseCell, styles.tableCell]}>{ex.reps ?? '—'}</Text>
       <Text style={[styles.exerciseCell, styles.tableCell]}>{ex.weight != null ? ex.weight : '—'}</Text>
@@ -796,5 +953,10 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
   archivedToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, marginTop: 8, marginBottom: 12 },
   archivedToggleText: { flex: 1, fontSize: 13, color: COLORS.textSecondary, fontWeight: '600' },
+  videoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  videoUploadRow: { flexDirection: 'row', alignItems: 'center' },
+  videoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.darkGray, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+  videoBtnText: { fontSize: 11, color: COLORS.silver, fontWeight: '500' },
+  videoPlayer: { width: '100%', height: 180, borderRadius: 10, marginTop: 8, backgroundColor: COLORS.dark },
   fab: { position: 'absolute', bottom: 30, right: 24, backgroundColor: COLORS.silver, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8 },
 });

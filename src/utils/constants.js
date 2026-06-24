@@ -49,6 +49,8 @@ export const ENDPOINTS = {
   MY_EXERCISE_NAMES: '/api/routines/me/exercise-names',
   ARCHIVE_ROUTINE: (id) => `/api/routines/${id}/archive`,
   UNARCHIVE_ROUTINE: (id) => `/api/routines/${id}/restore`,
+  UPLOAD_EXERCISE_VIDEO: (id) => `/api/routines/exercise/${id}/video`,
+  DELETE_EXERCISE_VIDEO: (id) => `/api/routines/exercise/${id}/video`,
 
   // Templates
   CREATE_TEMPLATE: '/api/templates/',
@@ -57,6 +59,8 @@ export const ENDPOINTS = {
   UPDATE_TEMPLATE: (id) => `/api/templates/${id}`,
   DELETE_TEMPLATE: (id) => `/api/templates/${id}`,
   ASSIGN_TEMPLATE: (id) => `/api/templates/${id}/assign`,
+  UPLOAD_TEMPLATE_EXERCISE_VIDEO: (id) => `/api/templates/exercise/${id}/video`,
+  DELETE_TEMPLATE_EXERCISE_VIDEO: (id) => `/api/templates/exercise/${id}/video`,
 
   // Schedules
   CREATE_SCHEDULE: '/api/schedules/',

@@ -51,7 +51,8 @@
           "photosPermission": "FitTrack necesita acceso a tus fotos para subir imágenes de progreso y foto de perfil.",
           "cameraPermission": "FitTrack necesita acceso a tu cámara para tomar fotos de progreso."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "extra": {
       "eas": {
