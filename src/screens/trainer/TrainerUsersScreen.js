@@ -147,11 +147,15 @@ export default function TrainerUsersScreen({ navigation }) {
       onPress={() => navigation.navigate('UserDetail', { user: item })}
     >
       {/* Avatar */}
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.name?.charAt(0).toUpperCase()}{item.last_name?.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      {item.profile_photo ? (
+        <Image source={{ uri: item.profile_photo }} style={styles.avatarImage} />
+      ) : (
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {item.name?.charAt(0).toUpperCase()}{item.last_name?.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
 
       {/* Info */}
       <View style={styles.userInfo}>
@@ -430,6 +434,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     marginRight: 12,
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   avatarText: {
     fontSize: 16,

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FitTrack",
-    "slug": "Frontend",
+    "slug": "fittrack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon1.png",
@@ -56,7 +56,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "677fba06-7c6d-4483-918b-6d36a341a401"
+        "projectId": "dc02a18e-bf67-48a6-bfab-521e4b4f3671"
       }
     }
   }

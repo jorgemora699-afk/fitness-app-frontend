@@ -10,7 +10,9 @@ import {
   Alert,
   RefreshControl,
   TextInput,
-  Modal
+  Modal,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -122,87 +124,97 @@ function NoteModal({ visible, note, onClose, onSave }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>{note ? 'Editar nota' : 'Nueva nota'}</Text>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalScrollContent}
+          >
+            <Text style={styles.modalTitle}>{note ? 'Editar nota' : 'Nueva nota'}</Text>
 
-          {/* Categoría */}
-          <Text style={styles.modalLabel}>Categoría</Text>
-          <View style={styles.categoriesRow}>
-            {CATEGORIES.map(cat => (
-              <TouchableOpacity
-                key={cat.key}
-                style={[
-                  styles.categoryChip,
-                  form.category === cat.key && {
-                    backgroundColor: cat.color + '22',
-                    borderColor: cat.color
-                  }
-                ]}
-                onPress={() => setForm(prev => ({ ...prev, category: cat.key }))}
-              >
-                <Ionicons
-                  name={cat.icon}
-                  size={14}
-                  color={form.category === cat.key ? cat.color : COLORS.textSecondary}
-                />
-                <Text style={[
-                  styles.categoryChipText,
-                  form.category === cat.key && { color: cat.color, fontWeight: '600' }
-                ]}>
-                  {cat.label}
-                </Text>
+            {/* Categoría */}
+            <Text style={styles.modalLabel}>Categoría</Text>
+            <View style={styles.categoriesRow}>
+              {CATEGORIES.map(cat => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={[
+                    styles.categoryChip,
+                    form.category === cat.key && {
+                      backgroundColor: cat.color + '22',
+                      borderColor: cat.color
+                    }
+                  ]}
+                  onPress={() => setForm(prev => ({ ...prev, category: cat.key }))}
+                >
+                  <Ionicons
+                    name={cat.icon}
+                    size={14}
+                    color={form.category === cat.key ? cat.color : COLORS.textSecondary}
+                  />
+                  <Text style={[
+                    styles.categoryChipText,
+                    form.category === cat.key && { color: cat.color, fontWeight: '600' }
+                  ]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Título */}
+            <Text style={styles.modalLabel}>Título</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Título de la nota"
+                placeholderTextColor={COLORS.textSecondary}
+                value={form.title}
+                onChangeText={(v) => setForm(prev => ({ ...prev, title: v }))}
+              />
+            </View>
+
+            {/* Contenido */}
+            <Text style={styles.modalLabel}>Contenido</Text>
+            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Escribe tu nota aquí..."
+                placeholderTextColor={COLORS.textSecondary}
+                value={form.content}
+                onChangeText={(v) => setForm(prev => ({ ...prev, content: v }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Acciones */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelModalBtn} onPress={onClose}>
+                <Text style={styles.cancelModalText}>Cancelar</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Título */}
-          <Text style={styles.modalLabel}>Título</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Título de la nota"
-              placeholderTextColor={COLORS.textSecondary}
-              value={form.title}
-              onChangeText={(v) => setForm(prev => ({ ...prev, title: v }))}
-            />
-          </View>
-
-          {/* Contenido */}
-          <Text style={styles.modalLabel}>Contenido</Text>
-          <View style={[styles.inputContainer, styles.textAreaContainer]}>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Escribe tu nota aquí..."
-              placeholderTextColor={COLORS.textSecondary}
-              value={form.content}
-              onChangeText={(v) => setForm(prev => ({ ...prev, content: v }))}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* Acciones */}
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.cancelModalBtn} onPress={onClose}>
-              <Text style={styles.cancelModalText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveModalBtn, saving && { opacity: 0.6 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={COLORS.dark} />
-              ) : (
-                <Text style={styles.saveModalText}>Guardar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={[styles.saveModalBtn, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={COLORS.dark} />
+                ) : (
+                  <Text style={styles.saveModalText}>Guardar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -415,7 +427,8 @@ const styles = StyleSheet.create({
   emptyBtnText: { color: COLORS.dark, fontWeight: 'bold', fontSize: 14 },
   fab: { position: 'absolute', bottom: 30, right: 24, backgroundColor: COLORS.silver, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 8 },
+  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 24, paddingHorizontal: 24, maxHeight: '85%' },
+  modalScrollContent: { paddingBottom: 40, gap: 8 },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 12 },
   modalLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.0, marginBottom: 8, marginTop: 8 },

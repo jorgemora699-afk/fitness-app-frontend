@@ -82,7 +82,7 @@ export default function CreateTemplateScreen({ navigation }) {
           exercises: validExercises.map(ex => ({
             name: ex.name,
             sets: ex.sets ? parseInt(ex.sets) : null,
-            reps: ex.reps ? parseInt(ex.reps) : null,
+            reps: ex.reps ? ex.reps.trim() : null,
             weight: ex.weight ? parseFloat(ex.weight) : null,
             notes: ex.notes || null
           }))
@@ -249,7 +249,6 @@ export default function CreateTemplateScreen({ navigation }) {
                   placeholderTextColor={
                     COLORS.textSecondary
                   }
-                  keyboardType="numeric"
                   value={exercise.reps}
                   onChangeText={(value) =>
                     updateExercise(

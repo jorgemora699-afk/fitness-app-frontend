@@ -10,7 +10,9 @@ import {
   Alert,
   Linking,
   RefreshControl,
-  TextInput
+  TextInput,
+  Image,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -32,6 +34,7 @@ export default function UserDetailScreen({ route, navigation }) {
   const [schedules, setSchedules] = useState([]);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [hiddenIds, setHiddenIds] = useState([]);
+  const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
   const storageKey = `hidden_schedules_${user.id}`;
   
 
@@ -235,11 +238,22 @@ export default function UserDetailScreen({ route, navigation }) {
       >
         {/* Avatar y nombre */}
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user.name?.charAt(0).toUpperCase()}{user.last_name?.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={currentUser.profile_photo ? 0.85 : 1}
+            onPress={() => {
+              if (currentUser.profile_photo) setPhotoViewerVisible(true);
+            }}
+          >
+            {currentUser.profile_photo ? (
+              <Image source={{ uri: currentUser.profile_photo }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user.name?.charAt(0).toUpperCase()}{user.last_name?.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <Text style={styles.userName}>{user.name} {user.last_name}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
 
@@ -624,6 +638,31 @@ export default function UserDetailScreen({ route, navigation }) {
 
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      {/* Visor de foto ampliada */}
+      <Modal
+        visible={photoViewerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPhotoViewerVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.photoViewerOverlay}
+          activeOpacity={1}
+          onPress={() => setPhotoViewerVisible(false)}
+        >
+          <TouchableOpacity style={styles.photoViewerClose} onPress={() => setPhotoViewerVisible(false)}>
+            <Ionicons name="close" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+          {currentUser.profile_photo && (
+            <Image
+              source={{ uri: currentUser.profile_photo }}
+              style={styles.photoViewerImage}
+              resizeMode="contain"
+            />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -776,6 +815,14 @@ const styles = StyleSheet.create({
       backgroundColor: COLORS.darkGray,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 2,
+      borderColor: COLORS.silver,
+      marginBottom: 12,
+    },
+    avatarImage: {
+      width: 85,
+      height: 85,
+      borderRadius: 42,
       borderWidth: 2,
       borderColor: COLORS.silver,
       marginBottom: 12,
@@ -1061,5 +1108,24 @@ const styles = StyleSheet.create({
       fontSize: 11,
       color: COLORS.textSecondary,
       fontWeight: '600',
+    },
+    photoViewerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.92)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    photoViewerImage: {
+      width: '90%',
+      height: '70%',
+    },
+    photoViewerClose: {
+      position: 'absolute',
+      top: 55,
+      right: 20,
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      padding: 8,
+      borderRadius: 20,
+      zIndex: 10,
     },
 });

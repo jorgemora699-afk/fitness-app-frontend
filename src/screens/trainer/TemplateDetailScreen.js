@@ -235,7 +235,7 @@ const handleDeleteVideo = async (exerciseId) => {
         exercises: draftExercises.map(ex => ({
           name: ex.name,
           sets: ex.sets ? parseInt(ex.sets) : null,
-          reps: ex.reps ? parseInt(ex.reps) : null,
+          reps: ex.reps ? ex.reps.trim() : null,
           weight: ex.weight ? parseFloat(ex.weight) : null,
           notes: ex.notes || ''
         }))
@@ -389,7 +389,6 @@ const handleDeleteVideo = async (exerciseId) => {
                     value={exercise.reps?.toString() || ''}
                     onChangeText={(value) => updateDraftExercise(index, 'reps', value)}
                     placeholder="Reps"
-                    keyboardType="numeric"
                     placeholderTextColor={COLORS.textSecondary}
                   />
                   <TextInput

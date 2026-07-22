@@ -52,7 +52,7 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
     try {
       const response = await client.put(ENDPOINTS.UPDATE_EXERCISE(ex.id), {
         sets: form.sets ? parseInt(form.sets) : null,
-        reps: form.reps ? parseInt(form.reps) : null,
+        reps: form.reps ? form.reps.trim() : null,
         weight: form.weight ? parseFloat(form.weight) : null,
         notes: form.notes || null
       });
@@ -181,7 +181,6 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
               placeholderTextColor={COLORS.textSecondary}
               value={form.reps}
               onChangeText={(v) => setForm(prev => ({ ...prev, reps: v }))}
-              keyboardType="numeric"
             />
           </View>
           <View style={[styles.inputContainer, styles.rowInput]}>
@@ -660,7 +659,6 @@ function RoutineCard({ routine, onDelete, onArchive, onUnarchive }) {
                     placeholderTextColor={COLORS.textSecondary}
                     value={newExercise.reps}
                     onChangeText={(v) => setNewExercise(prev => ({ ...prev, reps: v }))}
-                    keyboardType="numeric"
                   />
                 </View>
                 <View style={[styles.inputContainer, styles.rowInput]}>

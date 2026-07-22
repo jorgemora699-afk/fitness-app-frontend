@@ -67,7 +67,6 @@ function ExerciseCard({ exercise, index, onChange, onRemove }) {
             placeholderTextColor={COLORS.textSecondary}
             value={exercise.reps}
             onChangeText={(v) => onChange('reps', v)}
-            keyboardType="numeric"
           />
         </View>
         <View style={[styles.inputContainer, styles.rowInput]}>
@@ -138,7 +137,7 @@ export default function CreateRoutineScreen({ route, navigation }) {
         exercises: exercises.map((e) => ({
           name: e.name.trim(),
           sets: e.sets ? parseInt(e.sets) : null,
-          reps: e.reps ? parseInt(e.reps) : null,
+          reps: e.reps ? e.reps.trim() : null,
           weight: e.weight ? parseFloat(e.weight) : null,
           notes: e.notes.trim() || null,
         })),
