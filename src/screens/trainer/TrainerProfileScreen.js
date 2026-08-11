@@ -24,6 +24,7 @@ export default function TrainerProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -41,6 +42,42 @@ export default function TrainerProfileScreen({ navigation }) {
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Cerrar Sesión', style: 'destructive', onPress: logout }
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await client.delete(ENDPOINTS.DELETE_ACCOUNT);
+      await logout();
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo eliminar la cuenta');
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta acción es permanente. Se eliminará tu información y tus usuarios quedarán sin entrenador asignado. No se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirmar eliminación',
+              '¿Estás totalmente seguro? Esta acción es irreversible.',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Eliminar mi cuenta', style: 'destructive', onPress: confirmDeleteAccount }
+              ]
+            );
+          }
+        }
       ]
     );
   };
@@ -388,6 +425,22 @@ export default function TrainerProfileScreen({ navigation }) {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
+        {/* Eliminar cuenta */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+        >
+          {deletingAccount ? (
+            <ActivityIndicator color={COLORS.danger} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+              <Text style={styles.deleteAccountText}>Eliminar cuenta</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -498,6 +551,8 @@ const styles = StyleSheet.create({
   saveButtonText: { color: COLORS.dark, fontSize: 16, fontWeight: 'bold' },
   logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, backgroundColor: COLORS.card, borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: COLORS.border },
   logoutText: { color: COLORS.danger, fontSize: 16, fontWeight: 'bold' },
+  deleteAccountButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, marginTop: 12, backgroundColor: 'transparent', borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: COLORS.danger },
+  deleteAccountText: { color: COLORS.danger, fontSize: 15, fontWeight: '600' },
   photoModalOverlay: {
   flex: 1,
   backgroundColor: 'rgba(0,0,0,0.95)',

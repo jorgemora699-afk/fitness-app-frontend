@@ -50,6 +50,7 @@ export default function UserProfileScreen({ navigation }) {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -94,6 +95,42 @@ export default function UserProfileScreen({ navigation }) {
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const confirmDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await client.delete(ENDPOINTS.DELETE_ACCOUNT);
+      await logout();
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo eliminar la cuenta');
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta acción es permanente y eliminará tu información de la app. No se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirmar eliminación',
+              '¿Estás totalmente seguro? Esta acción es irreversible.',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Eliminar mi cuenta', style: 'destructive', onPress: confirmDeleteAccount }
+              ]
+            );
+          }
+        }
+      ]
+    );
   };
 
   const handlePickPhoto = async () => {
@@ -410,6 +447,22 @@ export default function UserProfileScreen({ navigation }) {
               <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
               <Text style={[styles.actionLabel, { color: COLORS.danger }]}>Cerrar sesión</Text>
               <Ionicons name="chevron-forward" size={16} color={COLORS.danger} />
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleDeleteAccount}
+              disabled={deletingAccount}
+            >
+              <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+              <Text style={[styles.actionLabel, { color: COLORS.danger }]}>
+                {deletingAccount ? 'Eliminando...' : 'Eliminar cuenta'}
+              </Text>
+              {deletingAccount ? (
+                <ActivityIndicator size="small" color={COLORS.danger} />
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color={COLORS.danger} />
+              )}
             </TouchableOpacity>
           </View>
         </View>

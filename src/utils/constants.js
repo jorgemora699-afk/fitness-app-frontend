@@ -25,6 +25,7 @@ export const ENDPOINTS = {
   DELETE_TRAINER_PHOTO: '/api/auth/trainers/me/photo',
   APPROVE_USER: (id) => `/api/users/${id}/approve`,
   REJECT_USER: (id) => `/api/users/${id}/reject`,
+  DELETE_ACCOUNT: '/api/account/delete',
 
   // Memberships
   CREATE_MEMBERSHIP: '/api/memberships/',
