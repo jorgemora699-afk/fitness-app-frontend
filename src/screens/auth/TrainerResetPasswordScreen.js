@@ -15,8 +15,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import useResponsive from '../../hooks/useResponsive';
 
 export default function TrainerResetPasswordScreen({ navigation }) {
+  const { isDesktop } = useResponsive();
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -86,130 +88,134 @@ export default function TrainerResetPasswordScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.inner}>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Recuperar contraseña</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Indicador de pasos */}
-          <View style={styles.stepsRow}>
-            <View style={[styles.step, step >= 1 && styles.stepActive]}>
-              <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
+            {/* Header */}
+            <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Recuperar contraseña</Text>
+              <View style={{ width: 40 }} />
             </View>
-            <View style={[styles.stepLine, step >= 2 && styles.stepLineActive]} />
-            <View style={[styles.step, step >= 2 && styles.stepActive]}>
-              <Text style={[styles.stepText, step >= 2 && styles.stepTextActive]}>2</Text>
+
+            {/* Indicador de pasos */}
+            <View style={styles.stepsRow}>
+              <View style={[styles.step, step >= 1 && styles.stepActive]}>
+                <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
+              </View>
+              <View style={[styles.stepLine, step >= 2 && styles.stepLineActive]} />
+              <View style={[styles.step, step >= 2 && styles.stepActive]}>
+                <Text style={[styles.stepText, step >= 2 && styles.stepTextActive]}>2</Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formContainer}>
-            {step === 1 ? (
-              <>
-                <Text style={styles.stepTitle}>Recupera tu contraseña</Text>
-                <Text style={styles.stepSubtitle}>
-                  Ingresa tu correo registrado. El código de verificación será enviado al administrador, quien te lo compartirá para continuar.
-                </Text>
+            <View style={[styles.formContainer, isDesktop && styles.formDesktop]}>
+              {step === 1 ? (
+                <>
+                  <Text style={styles.stepTitle}>Recupera tu contraseña</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Ingresa tu correo registrado. El código de verificación será enviado al administrador, quien te lo compartirá para continuar.
+                  </Text>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Correo electrónico"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Correo electrónico"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      onSubmitEditing={handleSendCode}
+                    />
+                  </View>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={handleSendCode}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={COLORS.dark} />
-                  ) : (
-                    <Text style={styles.buttonText}>Enviar código</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.stepTitle}>Nueva contraseña</Text>
-                <Text style={styles.stepSubtitle}>
-                  Ingresa el código que recibiste y tu nueva contraseña
-                </Text>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="keypad-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Código de 6 dígitos"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={code}
-                    onChangeText={setCode}
-                    keyboardType="numeric"
-                    maxLength={6}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nueva contraseña"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry={!showNew}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity onPress={() => setShowNew(!showNew)}>
-                    <Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleSendCode}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.dark} />
+                    ) : (
+                      <Text style={styles.buttonText}>Enviar código</Text>
+                    )}
                   </TouchableOpacity>
-                </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.stepTitle}>Nueva contraseña</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Ingresa el código que recibiste y tu nueva contraseña
+                  </Text>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirmar contraseña"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirm}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-                    <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="keypad-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Código de 6 dígitos"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={code}
+                      onChangeText={setCode}
+                      keyboardType="numeric"
+                      maxLength={6}
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Nueva contraseña"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNew}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity onPress={() => setShowNew(!showNew)}>
+                      <Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirmar contraseña"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirm}
+                      autoCapitalize="none"
+                      onSubmitEditing={handleReset}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                      <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleReset}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.dark} />
+                    ) : (
+                      <Text style={styles.buttonText}>Actualizar contraseña</Text>
+                    )}
                   </TouchableOpacity>
-                </View>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={handleReset}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={COLORS.dark} />
-                  ) : (
-                    <Text style={styles.buttonText}>Actualizar contraseña</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.backStep} onPress={() => setStep(1)}>
-                  <Text style={styles.backStepText}>Volver</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity style={styles.backStep} onPress={() => setStep(1)}>
+                    <Text style={styles.backStepText}>Volver</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -220,7 +226,9 @@ export default function TrainerResetPasswordScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { flexGrow: 1 },
+  inner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 20 },
+  headerDesktop: { paddingTop: 32 },
   backButton: { backgroundColor: COLORS.card, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
   stepsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
@@ -231,6 +239,7 @@ const styles = StyleSheet.create({
   stepLine: { width: 60, height: 2, backgroundColor: COLORS.border },
   stepLineActive: { backgroundColor: COLORS.silver },
   formContainer: { paddingHorizontal: 24, paddingTop: 10 },
+  formDesktop: { backgroundColor: COLORS.card, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border, padding: 28, marginHorizontal: 20 },
   stepTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text, marginBottom: 8 },
   stepSubtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 24, lineHeight: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.input, borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border },

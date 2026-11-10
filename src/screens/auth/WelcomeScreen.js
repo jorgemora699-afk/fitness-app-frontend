@@ -73,23 +73,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.dark,
   },
-  backgroundImage: {
-    position: 'absolute',
-    width: width,
-    height: height,
-  },
-  overlay: {
-    position: 'absolute',
-    width: width,
-    height: height,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
+  backgroundImage: { ...StyleSheet.absoluteFillObject },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
   content: {
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 30,
     paddingTop: 100,
     paddingBottom: 50,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   titleContainer: {
     alignItems: 'center',
@@ -143,15 +137,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   logo: {
-    width: 300,
-    height: 300,
     marginTop: 50,
-  },
-  backgroundImage: { ...StyleSheet.absoluteFillObject },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
-  content: {
-    flex: 1, justifyContent: 'space-between', paddingHorizontal: 30,
-    paddingTop: 100, paddingBottom: 50,
-    width: '100%', maxWidth: 480, alignSelf: 'center',
   },
 });

@@ -7,7 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   Image,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -18,10 +18,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../utils/constants';
 
-const { width, height } = Dimensions.get('window');
-
 export default function RegisterScreen({ navigation }) {
   const { registerUser } = useAuth();
+  const { width, height } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 900;
 
   const [form, setForm] = useState({
     name: '',
@@ -66,16 +66,19 @@ export default function RegisterScreen({ navigation }) {
 
       <Image
         source={require('../../../assets/gym.png')}
-        style={styles.headerImage}
+        style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
-      <View style={styles.headerOverlay} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
+          showsVerticalScrollIndicator={false}
+        >
 
           {/* Botón volver */}
           <TouchableOpacity
@@ -86,7 +89,7 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* Formulario */}
-          <View style={styles.formContainer}>
+          <View style={[styles.formContainer, isDesktop ? styles.formDesktop : { marginTop: height * 0.2 }]}>
 
             <Text style={styles.title}>Crear Cuenta</Text>
             <Text style={styles.subtitle}>Ingresa tus datos para registrarte</Text>
@@ -152,6 +155,7 @@ export default function RegisterScreen({ navigation }) {
                 value={form.password}
                 onChangeText={(v) => handleChange('password', v)}
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Ionicons
@@ -172,6 +176,7 @@ export default function RegisterScreen({ navigation }) {
                 value={form.trainer_code}
                 onChangeText={(v) => handleChange('trainer_code', v.toUpperCase())}
                 autoCapitalize="characters"
+                onSubmitEditing={handleRegister}
               />
             </View>
 
@@ -215,25 +220,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  headerImage: {
-    width: width,
-    height: height,
-    position: 'absolute',
-    top: 0,
-  },
-  headerOverlay: {
-    width: width,
-    height: height,
-    position: 'absolute',
-    top: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'flex-end',
+  },
+  scrollContentDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   backButton: {
     position: 'absolute',
@@ -251,7 +248,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingTop: 35,
     paddingBottom: 40,
-    marginTop: height * 0.2,
+  },
+  formDesktop: {
+    width: '100%',
+    maxWidth: 460,
+    borderRadius: 24,
   },
   title: {
     fontSize: 28,

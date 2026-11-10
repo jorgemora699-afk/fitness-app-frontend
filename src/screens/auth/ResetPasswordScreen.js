@@ -15,8 +15,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import useResponsive from '../../hooks/useResponsive';
 
 export default function ResetPasswordScreen({ navigation }) {
+  const { isDesktop } = useResponsive();
   const [step, setStep] = useState(1); // 1: datos, 2: nueva contraseña
   const [email, setEmail] = useState('');
   const [trainerCode, setTrainerCode] = useState('');
@@ -73,124 +75,128 @@ export default function ResetPasswordScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.inner}>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Recuperar contraseña</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Indicador de pasos */}
-          <View style={styles.stepsRow}>
-            <View style={[styles.step, step >= 1 && styles.stepActive]}>
-              <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
+            {/* Header */}
+            <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Recuperar contraseña</Text>
+              <View style={{ width: 40 }} />
             </View>
-            <View style={[styles.stepLine, step >= 2 && styles.stepLineActive]} />
-            <View style={[styles.step, step >= 2 && styles.stepActive]}>
-              <Text style={[styles.stepText, step >= 2 && styles.stepTextActive]}>2</Text>
+
+            {/* Indicador de pasos */}
+            <View style={styles.stepsRow}>
+              <View style={[styles.step, step >= 1 && styles.stepActive]}>
+                <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
+              </View>
+              <View style={[styles.stepLine, step >= 2 && styles.stepLineActive]} />
+              <View style={[styles.step, step >= 2 && styles.stepActive]}>
+                <Text style={[styles.stepText, step >= 2 && styles.stepTextActive]}>2</Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formContainer}>
-            {step === 1 ? (
-              <>
-                <Text style={styles.stepTitle}>Verificar identidad</Text>
-                <Text style={styles.stepSubtitle}>
-                  Ingresa tu email y el código de tu entrenador para continuar
-                </Text>
+            <View style={[styles.formContainer, isDesktop && styles.formDesktop]}>
+              {step === 1 ? (
+                <>
+                  <Text style={styles.stepTitle}>Verificar identidad</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Ingresa tu email y el código de tu entrenador para continuar
+                  </Text>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Correo electrónico"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Correo electrónico"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="key-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Código del entrenador"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={trainerCode}
-                    onChangeText={(v) => setTrainerCode(v.toUpperCase())}
-                    autoCapitalize="characters"
-                  />
-                </View>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="key-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Código del entrenador"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={trainerCode}
+                      onChangeText={(v) => setTrainerCode(v.toUpperCase())}
+                      autoCapitalize="characters"
+                      onSubmitEditing={handleVerify}
+                    />
+                  </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleVerify}>
-                  <Text style={styles.buttonText}>Continuar</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.stepTitle}>Nueva contraseña</Text>
-                <Text style={styles.stepSubtitle}>
-                  Ingresa tu nueva contraseña
-                </Text>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nueva contraseña"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry={!showNew}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity onPress={() => setShowNew(!showNew)}>
-                    <Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                  <TouchableOpacity style={styles.button} onPress={handleVerify}>
+                    <Text style={styles.buttonText}>Continuar</Text>
                   </TouchableOpacity>
-                </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.stepTitle}>Nueva contraseña</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Ingresa tu nueva contraseña
+                  </Text>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirmar contraseña"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirm}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-                    <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Nueva contraseña"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNew}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity onPress={() => setShowNew(!showNew)}>
+                      <Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirmar contraseña"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirm}
+                      autoCapitalize="none"
+                      onSubmitEditing={handleReset}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                      <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleReset}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.dark} />
+                    ) : (
+                      <Text style={styles.buttonText}>Actualizar contraseña</Text>
+                    )}
                   </TouchableOpacity>
-                </View>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={handleReset}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={COLORS.dark} />
-                  ) : (
-                    <Text style={styles.buttonText}>Actualizar contraseña</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.backStep}
-                  onPress={() => setStep(1)}
-                >
-                  <Text style={styles.backStepText}>Volver</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity
+                    style={styles.backStep}
+                    onPress={() => setStep(1)}
+                  >
+                    <Text style={styles.backStepText}>Volver</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -201,10 +207,12 @@ export default function ResetPasswordScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { flexGrow: 1 },
+  inner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 20 },
+  headerDesktop: { paddingTop: 32 },
   backButton: { backgroundColor: COLORS.card, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
-  stepsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 20, gap: 0 },
+  stepsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
   step: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.card, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
   stepActive: { backgroundColor: COLORS.silver, borderColor: COLORS.silver },
   stepText: { fontSize: 14, fontWeight: 'bold', color: COLORS.textSecondary },
@@ -212,6 +220,7 @@ const styles = StyleSheet.create({
   stepLine: { width: 60, height: 2, backgroundColor: COLORS.border },
   stepLineActive: { backgroundColor: COLORS.silver },
   formContainer: { paddingHorizontal: 24, paddingTop: 10 },
+  formDesktop: { backgroundColor: COLORS.card, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border, padding: 28, marginHorizontal: 20 },
   stepTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text, marginBottom: 8 },
   stepSubtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 24, lineHeight: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.input, borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border },
