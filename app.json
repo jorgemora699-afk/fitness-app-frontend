@@ -38,9 +38,7 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "web": { "bundler": "metro", "output": "single" },
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-font",

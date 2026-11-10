@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
 import { COLORS, ENDPOINTS } from '../../utils/constants';
+import { appendArchivo } from '../../utils/appendArchivo';
 
 export default function TrainerProfileScreen({ navigation }) {
   const { user, logout, updateUser } = useAuth();
@@ -95,7 +96,7 @@ export default function TrainerProfileScreen({ navigation }) {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: false,
       aspect: [1, 1],
       quality: 0.8,
@@ -108,13 +109,9 @@ export default function TrainerProfileScreen({ navigation }) {
   const uploadPhoto = async (asset) => {
     setUploadingPhoto(true);
     try {
-      const form = new FormData();
-      form.append('photo', {
-        uri: asset.uri,
-        name: 'profile.jpg',
-        type: 'image/jpeg',
-      });
-      const response = await client.post(ENDPOINTS.UPLOAD_TRAINER_PHOTO, form, {
+      const formData = new FormData();
+      await appendArchivo(formData, 'photo', asset, { name: 'profile.jpg', type: 'image/jpeg' });
+      const response = await client.post(ENDPOINTS.UPLOAD_TRAINER_PHOTO, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       await updateUser(response.data.trainer);
@@ -597,7 +594,7 @@ photoActionText: {
 passwordButton: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border },
 passwordButtonText: { flex: 1, fontSize: 15, color: COLORS.text, fontWeight: '500' },
 passwordModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-passwordModalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+passwordModalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12, maxWidth: 560, width: '100%', alignSelf: 'center'},
 passwordModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
 passwordModalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
 });

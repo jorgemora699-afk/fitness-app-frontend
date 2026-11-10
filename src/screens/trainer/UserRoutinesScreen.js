@@ -9,13 +9,16 @@ import {
   StatusBar,
   Alert,
   RefreshControl,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
+import { appendArchivo } from '../../utils/appendArchivo';
+import { getWebVideoDuration } from '../../utils/videoDuration';
 
 function VideoPlayerView({ videoUrl }) {
   const player = useVideoPlayer(videoUrl, (player) => {
@@ -77,19 +80,20 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
 
     const result = fromCamera
       ? await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+          mediaTypes: ['videos'],
           videoMaxDuration: 10,
           quality: 0.8,
         })
       : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+          mediaTypes: ['videos'],
           videoMaxDuration: 10,
           quality: 0.8,
         });
 
     if (!result.canceled) {
       const asset = result.assets[0];
-      const durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+      let durationSeconds = asset.duration ? asset.duration / 1000 : 0;
+      if (Platform.OS === 'web') durationSeconds = await getWebVideoDuration(asset.uri);
 
       if (durationSeconds > 10.5) {
         Alert.alert(
@@ -106,13 +110,9 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
   const uploadVideo = async (asset) => {
     setUploadingVideo(true);
     try {
-      const form = new FormData();
-      form.append('video', {
-        uri: asset.uri,
-        name: 'exercise.mp4',
-        type: 'video/mp4',
-      });
-      const response = await client.post(ENDPOINTS.UPLOAD_EXERCISE_VIDEO(ex.id), form, {
+      const formData = new FormData();
+      await appendArchivo(formData, 'video', asset, { name: 'exercise.mp4', type: 'video/mp4' });
+      const response = await client.post(ENDPOINTS.UPLOAD_EXERCISE_VIDEO(ex.id), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setVideoUrl(response.data.video_url);
@@ -252,6 +252,7 @@ function ExerciseRow({ ex, onUpdate, onDelete }) {
               <TouchableOpacity
                 style={styles.videoBtn}
                 onPress={() => {
+                  if (Platform.OS === 'web') { handlePickVideo(false); return; }
                   Alert.alert('Subir video', '¿Cómo quieres agregar el video?', [
                     { text: 'Cancelar', style: 'cancel' },
                     { text: 'Grabar', onPress: () => handlePickVideo(true) },

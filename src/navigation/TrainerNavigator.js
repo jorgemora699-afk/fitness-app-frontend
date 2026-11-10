@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useResponsive from '../hooks/useResponsive';
+import { buildTabOptions } from './tabOptions';
 
 import TrainerDashboardScreen from '../screens/trainer/TrainerDashboardScreen';
 import TrainerUsersScreen from '../screens/trainer/TrainerUsersScreen';
@@ -82,21 +84,13 @@ function FinancesStack() {
 
 export default function TrainerNavigator() {
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useResponsive();
+  const tabOptions = buildTabOptions({ isDesktop, insets });
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.silver,
-        tabBarInactiveTintColor: COLORS.gray,
-        tabBarStyle: {
-          backgroundColor: COLORS.card,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.border,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-          paddingTop: 8,
-          height: 60 + insets.bottom,
-        },
+        ...tabOptions,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
@@ -106,10 +100,6 @@ export default function TrainerNavigator() {
           else if (route.name === 'Finanzas') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        }
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardStack} />

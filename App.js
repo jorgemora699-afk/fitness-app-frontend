@@ -3,17 +3,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import './src/utils/alertWeb';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ BebasNeue_400Regular });
+  if (!fontsLoaded) return null;
 
-  const [fontsLoaded] = useFonts({
-    BebasNeue_400Regular,
-  });
-
-  if (!fontsLoaded) {
-    return null;
-  }
-  
   return (
     <SafeAreaProvider>
       <AuthProvider>

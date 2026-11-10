@@ -17,6 +17,7 @@ import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { appendArchivo } from '../../utils/appendArchivo';
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
@@ -142,7 +143,7 @@ export default function UserProfileScreen({ navigation }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
 
@@ -153,31 +154,16 @@ export default function UserProfileScreen({ navigation }) {
 
   const uploadPhoto = async (asset) => {
     setUploadingPhoto(true);
-
     try {
-      const form = new FormData();
+      const formData = new FormData();
+      await appendArchivo(formData, 'photo', asset, { name: 'profile.jpg', type: 'image/jpeg' });
 
-      form.append('photo', {
-        uri: asset.uri,
-        name: 'profile.jpg',
-        type: 'image/jpeg',
+      const response = await client.post(ENDPOINTS.UPLOAD_MY_PHOTO, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const response = await client.post(
-        ENDPOINTS.UPLOAD_MY_PHOTO,
-        form,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
       await updateUser(response.data.user);
-
-      // refresca la pantalla
       loadProfile();
-
       Alert.alert('Éxito', 'Foto actualizada correctamente');
     } catch (error) {
       Alert.alert('Error', 'No se pudo subir la foto');
@@ -641,7 +627,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
   actionLabel: { fontSize: 14, color: COLORS.text, flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  modalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12, maxWidth: 560, width: '100%', alignSelf: 'center' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.input, borderRadius: 12, paddingHorizontal: 15, borderWidth: 1, borderColor: COLORS.border },

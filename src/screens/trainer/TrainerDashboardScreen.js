@@ -10,12 +10,14 @@ import {
   StatusBar,
   Alert,
   Clipboard,
-  Image
+  Image,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import useResponsive from '../../hooks/useResponsive'
 
 export default function TrainerDashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -25,6 +27,7 @@ export default function TrainerDashboardScreen({ navigation }) {
   const [expiring, setExpiring] = useState([]);
   const [inactive, setInactive] = useState([]);
   const [todaySchedules, setTodaySchedules] = useState([]);
+  const { isDesktop } = useResponsive();
 
   useEffect(() => {
     loadData();
@@ -88,8 +91,13 @@ export default function TrainerDashboardScreen({ navigation }) {
     );
     };
 
-  const copyCode = () => {
-    Clipboard.setString(user?.trainer_code || '');
+  const copyCode = async () => {
+    const code = user?.trainer_code || '';
+    if (Platform.OS === 'web') {
+      await navigator.clipboard.writeText(code);
+    } else {
+      Clipboard.setString(code);
+    }
     Alert.alert('✅ Copiado', 'Código copiado al portapapeles');
   };
 
@@ -117,7 +125,7 @@ export default function TrainerDashboardScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, isDesktop && { paddingTop: 28 }]}>
         <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
             <Text style={styles.trainerName}>{user?.name}</Text>
@@ -498,4 +506,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginLeft: 10,
   },
+  columns: { flexDirection: 'row', alignItems: 'flex-start' },
+  colMain: { flex: 3 },
+  colSide: { flex: 2 },
 });

@@ -6,13 +6,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
-import { COLORS, FONTS } from '../../utils/constants';
+import { COLORS } from '../../utils/constants';
 
-const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }) {
+
+  const { height } = useWindowDimensions();
+  const logoSize = Math.min(300, height * 0.3);
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
@@ -36,7 +38,7 @@ export default function WelcomeScreen({ navigation }) {
           <Text style={styles.subtitle}>Inteligencia para tu rendimiento</Text>
           <Image
             source={require('../../../assets/icon_sin_fondo.png')}
-            style={styles.logo}
+            style={[styles.logo, { width: logoSize, height: logoSize }]}
             resizeMode="contain"
           />  
         </View>
@@ -144,5 +146,12 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     marginTop: 50,
+  },
+  backgroundImage: { ...StyleSheet.absoluteFillObject },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
+  content: {
+    flex: 1, justifyContent: 'space-between', paddingHorizontal: 30,
+    paddingTop: 100, paddingBottom: 50,
+    width: '100%', maxWidth: 480, alignSelf: 'center',
   },
 });

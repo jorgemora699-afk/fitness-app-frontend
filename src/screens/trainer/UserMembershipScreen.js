@@ -18,6 +18,8 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import { appendArchivo } from '../../utils/appendArchivo';
+import DateField from '../../components/DateField';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -28,7 +30,7 @@ const fmt = (dateStr) => {
   return `${day} ${months[parseInt(month) - 1]} ${year}`;
 };
 
-const toISO = (dateObj) => dateObj.toISOString().split('T')[0];
+const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 const isActive = (m) => {
   if (!m.is_paid) return false;
@@ -179,7 +181,7 @@ function ConfirmPaymentModal({ visible, membership, onClose, onSuccess }) {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
     if (!result.canceled) {
@@ -198,7 +200,7 @@ function ConfirmPaymentModal({ visible, membership, onClose, onSuccess }) {
       if (method === 'transfer' && receipt) {
         const form = new FormData();
         form.append('payment_method', 'transfer');
-        form.append('receipt', { uri: receipt.uri, name: receipt.name, type: receipt.type });
+        await appendArchivo(form, 'receipt', receipt, { name: receipt.name, type: receipt.type });
         await client.post(ENDPOINTS.CONFIRM_PAYMENT(membership.id), form, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -303,18 +305,11 @@ function CreateMembershipForm({ userId, onCreated, onCancel }) {
   nextMonth.setMonth(nextMonth.getMonth() + 1);
 
   const [startDate, setStartDate] = useState(toISO(today));
-  const [startDateObj, setStartDateObj] = useState(today);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-
   const [endDate, setEndDate] = useState(toISO(nextMonth));
-  const [endDateObj, setEndDateObj] = useState(nextMonth);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-
   const [amount, setAmount] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    console.log('CREATE MEMBERSHIP PRESSED');
     if (!startDate || !endDate) {
       Alert.alert('Error', 'Las fechas son obligatorias');
       return;
@@ -331,8 +326,6 @@ function CreateMembershipForm({ userId, onCreated, onCancel }) {
         end_date: endDate,
         amount: amount ? parseFloat(amount) : null,
       };
-      console.log('CREATE MEMBERSHIP PAYLOAD', payload);
-
       const res = await client.post(ENDPOINTS.CREATE_MEMBERSHIP, payload);
       onCreated(res.data.membership);
     } catch (error) {
@@ -347,48 +340,10 @@ function CreateMembershipForm({ userId, onCreated, onCancel }) {
       <Text style={styles.createFormTitle}>Nueva membresía</Text>
 
       <Text style={styles.formLabel}>Fecha de inicio</Text>
-      <TouchableOpacity
-        style={styles.datePickerBtn}
-        onPress={() => setShowStartPicker(true)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-        <Text style={styles.datePickerText}>{fmt(startDate)}</Text>
-        <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
-      </TouchableOpacity>
-      {showStartPicker && (
-        <DateTimePicker
-          value={startDateObj}
-          mode="date"
-          display="default"
-          onChange={(event, selected) => {
-            setShowStartPicker(false);
-            if (selected) { setStartDateObj(selected); setStartDate(toISO(selected)); }
-          }}
-        />
-      )}
+      <DateField value={startDate} label={fmt(startDate)} onChange={setStartDate} />
 
       <Text style={styles.formLabel}>Fecha de fin</Text>
-      <TouchableOpacity
-        style={styles.datePickerBtn}
-        onPress={() => setShowEndPicker(true)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-        <Text style={styles.datePickerText}>{fmt(endDate)}</Text>
-        <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
-      </TouchableOpacity>
-      {showEndPicker && (
-        <DateTimePicker
-          value={endDateObj}
-          mode="date"
-          display="default"
-          onChange={(event, selected) => {
-            setShowEndPicker(false);
-            if (selected) { setEndDateObj(selected); setEndDate(toISO(selected)); }
-          }}
-        />
-      )}
+      <DateField value={endDate} label={fmt(endDate)} onChange={setEndDate} />
 
       <Text style={styles.formLabel}>Monto (opcional)</Text>
       <View style={styles.inputContainer}>
@@ -633,7 +588,7 @@ const styles = StyleSheet.create({
 
   // Confirm payment modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 4 },
+  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 4, maxWidth: 560, width: '100%', alignSelf: 'center'},
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 2 },
   modalSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 },

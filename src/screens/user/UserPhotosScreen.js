@@ -11,7 +11,8 @@ import {
   Image,
   Modal,
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,9 +20,10 @@ import ImageViewer from 'react-native-image-zoom-viewer';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import { appendArchivo } from '../../utils/appendArchivo';
 
 const { width } = Dimensions.get('window');
-const PHOTO_SIZE = (width - 60) / 3;
+const PHOTO_SIZE = (Math.min(width, 600) - 60) / 3;
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -50,7 +52,7 @@ function UploadModal({ visible, onClose, onUploaded }) {
     }
     const result = fromCamera
       ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
     if (!result.canceled) {
       const asset = result.assets[0];
       setImage({ uri: asset.uri, name: 'photo.jpg', type: 'image/jpeg' });
@@ -61,10 +63,10 @@ function UploadModal({ visible, onClose, onUploaded }) {
     if (!image) { Alert.alert('Error', 'Selecciona o toma una foto'); return; }
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append('photo', { uri: image.uri, name: image.name, type: image.type });
-      form.append('angle', angle);
-      await client.post(ENDPOINTS.UPLOAD_PHOTO, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const formData = new FormData();
+      await appendArchivo(formData, 'photo', image, { name: image.name, type: image.type });
+      formData.append('angle', angle);
+      await client.post(ENDPOINTS.UPLOAD_PHOTO, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       onUploaded();
       handleClose();
     } catch (error) {
@@ -457,7 +459,11 @@ export default function UserPhotosScreen({ navigation }) {
           >
             <Ionicons name="close-circle" size={32} color={COLORS.text} />
           </TouchableOpacity>
-          {previewPhoto && (
+          {previewPhoto && (Platform.OS === 'web' ? (
+            <TouchableOpacity activeOpacity={1} style={{ flex: 1, justifyContent: 'center' }} onPress={() => setPreviewPhoto(null)}>
+              <Image source={{ uri: previewPhoto.photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+            </TouchableOpacity>
+          ) : (
             <ImageViewer
               imageUrls={[{ url: previewPhoto.photo_url }]}
               enableSwipeDown
@@ -465,7 +471,7 @@ export default function UserPhotosScreen({ navigation }) {
               renderIndicator={() => null}
               backgroundColor="#000"
             />
-          )}
+          ))}
         </View>
       </Modal>
 
@@ -486,7 +492,7 @@ const styles = StyleSheet.create({
   profileButton: { borderRadius: 20 },
   privacyBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingBottom: 16 },
   privacyText: { fontSize: 12, color: COLORS.textSecondary },
-  scrollContent: { paddingHorizontal: 20 },
+  scrollContent: { paddingHorizontal: 20, maxWidth: 600, width: '100%', alignSelf: 'center' },
   monthSection: { marginBottom: 24 },
   monthTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
   photosRow: { flexDirection: 'row', gap: 10 },
@@ -504,7 +510,7 @@ const styles = StyleSheet.create({
   previewClose: { position: 'absolute', top: 55, right: 20, zIndex: 10 },
   previewImage: { width: '90%', height: '75%', borderRadius: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 4 },
+  modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 4, maxWidth: 560, width: '100%', alignSelf: 'center' },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 8 },
   modalLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, marginTop: 8 },

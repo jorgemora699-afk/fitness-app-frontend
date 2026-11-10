@@ -7,7 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   Image,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -18,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../utils/constants';
 
-const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
   const { loginTrainer, loginUser } = useAuth();
@@ -28,6 +27,8 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { width, height } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 900;
 
   const handleRoleChange = (newRole) => {
     setRole(newRole);
@@ -63,36 +64,40 @@ export default function LoginScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
 
-      {/* Header con imagen */}
       <Image
         source={require('../../../assets/gym.png')}
-        style={styles.headerImage}
+        style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
-      <View style={styles.headerOverlay} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
 
-      <Image
-        source={require('../../../assets/icon_sin_fondo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      {!isDesktop && (
+        <Image
+          source={require('../../../assets/icon_sin_fondo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}>
 
-          {/* Botón volver */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
 
-          {/* Formulario */}
-          <View style={styles.formContainer}>
+          {isDesktop && (
+            <Image
+              source={require('../../../assets/icon_sin_fondo.png')}
+              style={styles.logoDesktop}
+              resizeMode="contain"
+            />
+          )}
+
+          <View style={[styles.formContainer, isDesktop ? styles.formDesktop : { marginTop: height * 0.45 }]}>
 
             <Text style={styles.title}>Bienvenido</Text>
             <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
@@ -358,4 +363,7 @@ const styles = StyleSheet.create({
     color: COLORS.silver,
     fontWeight: 'bold',
   },
+  scrollContentDesktop: { justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
+  logoDesktop: { width: 260, height: 150, marginBottom: 12 },
+  formDesktop: { width: '100%', maxWidth: 440, borderRadius: 24, marginTop: 0 },
 });
