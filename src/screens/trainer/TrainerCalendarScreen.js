@@ -10,14 +10,16 @@ import {
   Alert,
   Modal,
   RefreshControl,
-  Image
+  Image,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
-import TimePickerModal from '../../components/TimePickerModal';
+import DateField from '../../components/DateField';
+import TimeField from '../../components/TimeField';
+import useResponsive from '../../hooks/useResponsive';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,12 @@ const toISO = (d) => {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+};
+
+const defaultEndRepeat = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 3);
+  return toISO(d);
 };
 
 const getWeekDays = (referenceDate) => {
@@ -170,6 +178,7 @@ function ScheduleCard({ item, onNotify, onAttendance, onViewDetail }) {
 // ─── Schedule Detail Modal ─────────────────────────────────────────────────────
 
 function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCancel, onDelete }) {
+  const { isDesktop } = useResponsive();
   if (!item) return null;
   const { schedule, user } = item;
   const userResponse = schedule.user_response || 'pending';
@@ -214,8 +223,8 @@ function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCanc
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.detailSheet}>
+      <View style={[styles.modalOverlay, isDesktop && styles.modalOverlayDesktop]}>
+        <View style={[styles.detailSheet, isDesktop && styles.modalSheetDesktop]}>
           <View style={styles.modalHandle} />
 
           <View style={styles.detailHeader}>
@@ -241,7 +250,7 @@ function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCanc
           </View>
 
           {/* Rutina */}
-          {schedule.routine_id && (
+          {!!schedule.routine_id && (
             <View style={styles.detailRow}>
               <Ionicons name="barbell-outline" size={18} color={COLORS.silver} />
               <Text style={styles.detailText}>
@@ -251,7 +260,7 @@ function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCanc
           )}
 
           {/* Tipo de sesión */}
-          {schedule.session_type && (
+          {!!schedule.session_type && (
             <View style={styles.detailRow}>
               <Ionicons name="fitness-outline" size={18} color={COLORS.silver} />
               <Text style={styles.detailText}>{schedule.session_type}</Text>
@@ -259,7 +268,7 @@ function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCanc
           )}
 
           {/* Motivo cancelación */}
-          {schedule.cancel_reason && (
+          {!!schedule.cancel_reason && (
             <View style={styles.detailRow}>
               <Ionicons name="alert-circle-outline" size={18} color={COLORS.danger} />
               <Text style={[styles.detailText, { fontStyle: 'italic' }]}>"{schedule.cancel_reason}"</Text>
@@ -319,6 +328,7 @@ function ScheduleDetailModal({ visible, item, onClose, onConfirm, onEdit, onCanc
 // ─── Create Schedule Modal ────────────────────────────────────────────────────
 
 function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
+  const { isDesktop } = useResponsive();
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -327,17 +337,10 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
   const [selectedRoutine, setSelectedRoutine] = useState(null);
   const [sessionType, setSessionType] = useState('Entrenamiento');
   const [date, setDate] = useState(selectedDate);
-  const [dateObj, setDateObj] = useState(new Date(selectedDate + 'T12:00:00'));
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [repeatDays, setRepeatDays] = useState([]);
-  const [endRepeatDate, setEndRepeatDate] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() + 3))
-  );
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [endRepeat, setEndRepeat] = useState(defaultEndRepeat);
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:00');
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = React.useRef(false);
 
@@ -352,10 +355,11 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
   useEffect(() => {
     if (visible) {
       setDate(selectedDate);
-      setDateObj(new Date(selectedDate + 'T12:00:00'));
       setSelectedUser(null);
       setSelectedRoutine(null);
       setRoutines([]);
+      setRepeatDays([]);
+      setEndRepeat(defaultEndRepeat());
       setSessionType('Entrenamiento');
       setStartTime('08:00');
       setEndTime('09:00');
@@ -420,7 +424,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
         end_time: endTime,
         routine_id: selectedRoutine?.id || null,
         repeat_days: repeatDays,
-        repeat_until: toISO(endRepeatDate),
+        repeat_until: endRepeat,
         session_type: sessionType,
       });
       onCreated();
@@ -439,9 +443,9 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, isDesktop && styles.modalOverlayDesktop]}>
         <ScrollView
-          style={styles.modalSheet}
+          style={[styles.modalSheet, isDesktop && styles.modalSheetDesktop]}
           contentContainerStyle={styles.modalContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -451,65 +455,19 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
 
           {/* Fecha */}
           <Text style={styles.modalLabel}>Fecha</Text>
-          <TouchableOpacity
-            style={styles.datePickerBtn}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.datePickerText}>{fmtDate(date)}</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateObj}
-              mode="date"
-              display="default"
-              onChange={(event, selected) => {
-                setShowDatePicker(false);
-                if (selected) { setDateObj(selected); setDate(toISO(selected)); }
-              }}
-            />
-          )}
+          <DateField value={date} label={fmtDate(date)} onChange={setDate} />
 
           {/* Horas */}
           <View style={styles.timesRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Inicio</Text>
-              <TouchableOpacity
-                style={styles.datePickerBtn}
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{startTime}</Text>
-              </TouchableOpacity>
+              <TimeField value={startTime} title="Hora de inicio" onChange={setStartTime} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Fin</Text>
-              <TouchableOpacity
-                style={styles.datePickerBtn}
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{endTime}</Text>
-              </TouchableOpacity>
+              <TimeField value={endTime} title="Hora de fin" onChange={setEndTime} />
             </View>
           </View>
-
-          <TimePickerModal
-            visible={showStartPicker}
-            value={startTime}
-            title="Hora de inicio"
-            onConfirm={(time) => setStartTime(time)}
-            onClose={() => setShowStartPicker(false)}
-          />
-          <TimePickerModal
-            visible={showEndPicker}
-            value={endTime}
-            title="Hora de fin"
-            onConfirm={(time) => setEndTime(time)}
-            onClose={() => setShowEndPicker(false)}
-          />
 
           {/* Usuario */}
           <Text style={styles.modalLabel}>Usuario</Text>
@@ -592,21 +550,7 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
           </View>
 
           <Text style={styles.modalLabel}>Repetir hasta</Text>
-          <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowEndDatePicker(true)}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.datePickerText}>{fmtDate(toISO(endRepeatDate))}</Text>
-          </TouchableOpacity>
-          {showEndDatePicker && (
-            <DateTimePicker
-              value={endRepeatDate}
-              mode="date"
-              display="default"
-              onChange={(event, selected) => {
-                setShowEndDatePicker(false);
-                if (selected) setEndRepeatDate(selected);
-              }}
-            />
-          )}
+          <DateField value={endRepeat} label={fmtDate(endRepeat)} onChange={setEndRepeat} />
 
           {/* Tipo de sesión */}
           <Text style={styles.modalLabel}>Tipo de sesión</Text>
@@ -651,14 +595,11 @@ function CreateScheduleModal({ visible, selectedDate, onClose, onCreated }) {
 // ─── Edit Schedule Modal ───────────────────────────────────────────────────────
 
 function EditScheduleModal({ visible, item, onClose, onUpdated }) {
+  const { isDesktop } = useResponsive();
   const [date, setDate] = useState('');
-  const [dateObj, setDateObj] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [sessionType, setSessionType] = useState('Entrenamiento');
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:00');
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
   const [routines, setRoutines] = useState([]);
   const [loadingRoutines, setLoadingRoutines] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState(null);
@@ -669,8 +610,6 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
     if (visible && item) {
       const s = item.schedule;
       setDate(s.date);
-      const [y, m, d] = s.date.split('-');
-      setDateObj(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
       setStartTime(s.start_time?.slice(0, 5) || '08:00');
       setEndTime(s.end_time?.slice(0, 5) || '09:00');
       setSessionType(s.session_type || 'Entrenamiento');
@@ -726,9 +665,9 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, isDesktop && styles.modalOverlayDesktop]}>
         <ScrollView
-          style={styles.modalSheet}
+          style={[styles.modalSheet, isDesktop && styles.modalSheetDesktop]}
           contentContainerStyle={styles.modalContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -739,55 +678,19 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
 
           {/* Fecha */}
           <Text style={styles.modalLabel}>Fecha</Text>
-          <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.datePickerText}>{fmtDate(date)}</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateObj}
-              mode="date"
-              display="default"
-              onChange={(event, selected) => {
-                setShowDatePicker(false);
-                if (selected) { setDateObj(selected); setDate(toISO(selected)); }
-              }}
-            />
-          )}
+          {!!date && <DateField value={date} label={fmtDate(date)} onChange={setDate} />}
 
           {/* Horas */}
           <View style={styles.timesRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Inicio</Text>
-              <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowStartPicker(true)}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{startTime}</Text>
-              </TouchableOpacity>
+              <TimeField value={startTime} title="Hora de inicio" onChange={setStartTime} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalLabel}>Fin</Text>
-              <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowEndPicker(true)}>
-                <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.datePickerText}>{endTime}</Text>
-              </TouchableOpacity>
+              <TimeField value={endTime} title="Hora de fin" onChange={setEndTime} />
             </View>
           </View>
-
-          <TimePickerModal
-            visible={showStartPicker}
-            value={startTime}
-            title="Hora de inicio"
-            onConfirm={(time) => setStartTime(time)}
-            onClose={() => setShowStartPicker(false)}
-          />
-          <TimePickerModal
-            visible={showEndPicker}
-            value={endTime}
-            title="Hora de fin"
-            onConfirm={(time) => setEndTime(time)}
-            onClose={() => setShowEndPicker(false)}
-          />
 
           {/* Rutina */}
           <Text style={styles.modalLabel}>Rutina <Text style={styles.modalLabelOptional}>(opcional)</Text></Text>
@@ -850,10 +753,12 @@ function EditScheduleModal({ visible, item, onClose, onUpdated }) {
     </Modal>
   );
 }
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function TrainerCalendarScreen({ navigation }) {
   const { user } = useAuth();
+  const { isDesktop } = useResponsive();
   const [selectedDate, setSelectedDate] = useState(toISO(new Date()));
   const [weekRef, setWeekRef] = useState(new Date());
   const [schedules, setSchedules] = useState([]);
@@ -920,10 +825,9 @@ export default function TrainerCalendarScreen({ navigation }) {
     try {
       await client.post(ENDPOINTS.CANCEL_AS_TRAINER(scheduleId), {});
       loadSchedules(selectedDate);
-    } catch {
-      console.log('Error cancelar status:', error.response?.status);
-      console.log('Error cancelar data:', JSON.stringify(error.response?.data));
-      console.log('Error cancelar message:', error.message);
+    } catch (error) {
+      console.log('Error cancelar status:', error?.response?.status);
+      console.log('Error cancelar data:', JSON.stringify(error?.response?.data));
       Alert.alert('Error', 'No se pudo cancelar');
     } finally {
       cancellingRef.current = false;
@@ -972,28 +876,38 @@ export default function TrainerCalendarScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && { paddingTop: 28 }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Calendario</Text>
           <Text style={styles.headerMonth}>{monthYear}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('TrainerProfile')}
-          style={styles.profileButton}
-        >
-          {user?.profile_photo ? (
-            <Image
-              source={{ uri: user.profile_photo }}
-              style={styles.headerProfileImage}
-            />
-          ) : (
-            <Ionicons
-              name="person-circle-outline"
-              size={38}
-              color={COLORS.silver}
-            />
+        <View style={styles.headerRight}>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              onPress={() => loadSchedules(selectedDate)}
+              style={styles.refreshBtn}
+            >
+              <Ionicons name="refresh-outline" size={20} color={COLORS.silver} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('TrainerProfile')}
+            style={styles.profileButton}
+          >
+            {user?.profile_photo ? (
+              <Image
+                source={{ uri: user.profile_photo }}
+                style={styles.headerProfileImage}
+              />
+            ) : (
+              <Ionicons
+                name="person-circle-outline"
+                size={38}
+                color={COLORS.silver}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Navegación semanal */}
@@ -1135,14 +1049,16 @@ const styles = StyleSheet.create({
   loadingContainer: { paddingTop: 40, alignItems: 'center' },
 
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 12 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 12, width: '100%', maxWidth: 820, alignSelf: 'center' },
   headerLeft: { gap: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
   headerMonth: { fontSize: 13, color: COLORS.textSecondary },
   profileButton: { backgroundColor: COLORS.card, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border },
+  refreshBtn: { backgroundColor: COLORS.card, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
 
   // Week nav
-  weekNav: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8 },
+  weekNav: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8, width: '100%', maxWidth: 820, alignSelf: 'center' },
   weekNavBtn: { padding: 8 },
   weekDays: { flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
   dayBtn: { alignItems: 'center', paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12, flex: 1 },
@@ -1161,7 +1077,7 @@ const styles = StyleSheet.create({
   todayBtnText: { fontSize: 12, color: COLORS.silver, fontWeight: '600' },
 
   // Scroll
-  scrollContent: { paddingHorizontal: 20, paddingTop: 4 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 4, width: '100%', maxWidth: 820, alignSelf: 'center' },
   selectedDateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   selectedDateText: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   countBadge: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
@@ -1247,15 +1163,15 @@ const styles = StyleSheet.create({
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalOverlayDesktop: { justifyContent: 'center', alignItems: 'center' },
   modalSheet: { backgroundColor: COLORS.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalSheetDesktop: { width: '100%', maxWidth: 560, borderRadius: 24, flexGrow: 0 },
   modalContent: { padding: 24, paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 4 },
   modalSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 8 },
   modalLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, marginTop: 12 },
   modalLabelOptional: { fontSize: 11, color: COLORS.metalGray, fontWeight: '400', textTransform: 'none' },
-  datePickerBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.darkGray, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 1, borderColor: COLORS.border, gap: 8 },
-  datePickerText: { flex: 1, color: COLORS.text, fontSize: 14 },
   timesRow: { flexDirection: 'row', gap: 12 },
 
   // Users

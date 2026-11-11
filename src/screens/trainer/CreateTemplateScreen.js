@@ -14,46 +14,35 @@ import { Ionicons } from '@expo/vector-icons';
 
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
+import useResponsive from '../../hooks/useResponsive';
+
+const emptyExercise = () => ({
+  name: '',
+  sets: '',
+  reps: '',
+  weight: '',
+  notes: ''
+});
 
 export default function CreateTemplateScreen({ navigation }) {
+  const { isDesktop } = useResponsive();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-
-  const [exercises, setExercises] = useState([
-    {
-      name: '',
-      sets: '',
-      reps: '',
-      weight: '',
-      notes: ''
-    }
-  ]);
-
+  const [exercises, setExercises] = useState([emptyExercise()]);
   const [saving, setSaving] = useState(false);
 
   const addExercise = () => {
-    setExercises([
-      ...exercises,
-      {
-        name: '',
-        sets: '',
-        reps: '',
-        weight: '',
-        notes: ''
-      }
-    ]);
+    setExercises(prev => [...prev, emptyExercise()]);
   };
 
   const removeExercise = (index) => {
-    const updated = [...exercises];
-    updated.splice(index, 1);
-    setExercises(updated);
+    setExercises(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateExercise = (index, field, value) => {
-    const updated = [...exercises];
-    updated[index][field] = value;
-    setExercises(updated);
+    setExercises(prev =>
+      prev.map((ex, i) => (i === index ? { ...ex, [field]: value } : ex))
+    );
   };
 
   const handleSave = async () => {
@@ -62,9 +51,7 @@ export default function CreateTemplateScreen({ navigation }) {
       return;
     }
 
-    const validExercises = exercises.filter(
-      ex => ex.name.trim() !== ''
-    );
+    const validExercises = exercises.filter(ex => ex.name.trim() !== '');
 
     if (validExercises.length === 0) {
       Alert.alert('Error', 'Agrega al menos un ejercicio');
@@ -74,37 +61,24 @@ export default function CreateTemplateScreen({ navigation }) {
     try {
       setSaving(true);
 
-      await client.post(
-        ENDPOINTS.CREATE_TEMPLATE,
-        {
-          name,
-          description,
-          exercises: validExercises.map(ex => ({
-            name: ex.name,
-            sets: ex.sets ? parseInt(ex.sets) : null,
-            reps: ex.reps ? ex.reps.trim() : null,
-            weight: ex.weight ? parseFloat(ex.weight) : null,
-            notes: ex.notes || null
-          }))
-        }
-      );
+      await client.post(ENDPOINTS.CREATE_TEMPLATE, {
+        name,
+        description,
+        exercises: validExercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets ? parseInt(ex.sets) : null,
+          reps: ex.reps ? ex.reps.trim() : null,
+          weight: ex.weight ? parseFloat(ex.weight) : null,
+          notes: ex.notes || null
+        }))
+      });
 
-      Alert.alert(
-        'Éxito',
-        'Plantilla creada correctamente',
-        [
-          {
-            text: 'Aceptar',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Alert.alert('Éxito', 'Plantilla creada correctamente', [
+        { text: 'Aceptar', onPress: () => navigation.goBack() }
+      ]);
     } catch (error) {
       console.log(error.response?.data);
-      Alert.alert(
-        'Error',
-        'No se pudo crear la plantilla'
-      );
+      Alert.alert('Error', 'No se pudo crear la plantilla');
     } finally {
       setSaving(false);
     }
@@ -112,37 +86,25 @@ export default function CreateTemplateScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={COLORS.dark}
-      />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={COLORS.text}
-          />
+      <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
-          Nueva Plantilla
-        </Text>
+        <Text style={styles.headerTitle}>Nueva Plantilla</Text>
 
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.section}>
-          <Text style={styles.label}>
-            Nombre de la plantilla
-          </Text>
+          <Text style={styles.label}>Nombre de la plantilla</Text>
 
           <TextInput
             style={styles.input}
@@ -152,9 +114,7 @@ export default function CreateTemplateScreen({ navigation }) {
             placeholderTextColor={COLORS.textSecondary}
           />
 
-          <Text style={styles.label}>
-            Descripción
-          </Text>
+          <Text style={styles.label}>Descripción</Text>
 
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -168,43 +128,21 @@ export default function CreateTemplateScreen({ navigation }) {
 
         <View style={styles.section}>
           <View style={styles.exerciseHeader}>
-            <Text style={styles.sectionTitle}>
-              Ejercicios
-            </Text>
+            <Text style={styles.sectionTitle}>Ejercicios</Text>
 
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={addExercise}
-            >
-              <Ionicons
-                name="add"
-                size={20}
-                color={COLORS.dark}
-              />
+            <TouchableOpacity style={styles.addButton} onPress={addExercise}>
+              <Ionicons name="add" size={20} color={COLORS.dark} />
             </TouchableOpacity>
           </View>
 
           {exercises.map((exercise, index) => (
-            <View
-              key={index}
-              style={styles.exerciseCard}
-            >
+            <View key={index} style={styles.exerciseCard}>
               <View style={styles.exerciseTop}>
-                <Text style={styles.exerciseTitle}>
-                  Ejercicio {index + 1}
-                </Text>
+                <Text style={styles.exerciseTitle}>Ejercicio {index + 1}</Text>
 
                 {exercises.length > 1 && (
-                  <TouchableOpacity
-                    onPress={() =>
-                      removeExercise(index)
-                    }
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={22}
-                      color={COLORS.danger}
-                    />
+                  <TouchableOpacity onPress={() => removeExercise(index)}>
+                    <Ionicons name="trash-outline" size={22} color={COLORS.danger} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -212,85 +150,45 @@ export default function CreateTemplateScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Nombre"
-                placeholderTextColor={
-                  COLORS.textSecondary
-                }
+                placeholderTextColor={COLORS.textSecondary}
                 value={exercise.name}
-                onChangeText={(value) =>
-                  updateExercise(
-                    index,
-                    'name',
-                    value
-                  )
-                }
+                onChangeText={(value) => updateExercise(index, 'name', value)}
               />
 
               <View style={styles.row}>
                 <TextInput
                   style={styles.smallInput}
                   placeholder="Series"
-                  placeholderTextColor={
-                    COLORS.textSecondary
-                  }
+                  placeholderTextColor={COLORS.textSecondary}
                   keyboardType="numeric"
                   value={exercise.sets}
-                  onChangeText={(value) =>
-                    updateExercise(
-                      index,
-                      'sets',
-                      value
-                    )
-                  }
+                  onChangeText={(value) => updateExercise(index, 'sets', value)}
                 />
 
                 <TextInput
                   style={styles.smallInput}
                   placeholder="Reps"
-                  placeholderTextColor={
-                    COLORS.textSecondary
-                  }
+                  placeholderTextColor={COLORS.textSecondary}
                   value={exercise.reps}
-                  onChangeText={(value) =>
-                    updateExercise(
-                      index,
-                      'reps',
-                      value
-                    )
-                  }
+                  onChangeText={(value) => updateExercise(index, 'reps', value)}
                 />
 
                 <TextInput
                   style={styles.smallInput}
                   placeholder="Peso"
-                  placeholderTextColor={
-                    COLORS.textSecondary
-                  }
+                  placeholderTextColor={COLORS.textSecondary}
                   keyboardType="numeric"
                   value={exercise.weight}
-                  onChangeText={(value) =>
-                    updateExercise(
-                      index,
-                      'weight',
-                      value
-                    )
-                  }
+                  onChangeText={(value) => updateExercise(index, 'weight', value)}
                 />
               </View>
 
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Notas"
-                placeholderTextColor={
-                  COLORS.textSecondary
-                }
+                placeholderTextColor={COLORS.textSecondary}
                 value={exercise.notes}
-                onChangeText={(value) =>
-                  updateExercise(
-                    index,
-                    'notes',
-                    value
-                  )
-                }
+                onChangeText={(value) => updateExercise(index, 'notes', value)}
                 multiline
               />
             </View>
@@ -303,13 +201,9 @@ export default function CreateTemplateScreen({ navigation }) {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator
-              color={COLORS.dark}
-            />
+            <ActivityIndicator color={COLORS.dark} />
           ) : (
-            <Text style={styles.saveButtonText}>
-              Guardar Plantilla
-            </Text>
+            <Text style={styles.saveButtonText}>Guardar Plantilla</Text>
           )}
         </TouchableOpacity>
 
@@ -331,7 +225,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 55,
     paddingHorizontal: 20,
-    paddingBottom: 20
+    paddingBottom: 20,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center'
+  },
+
+  headerDesktop: {
+    paddingTop: 28
+  },
+
+  scrollContent: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center'
   },
 
   backButton: {
