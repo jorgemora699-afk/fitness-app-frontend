@@ -18,24 +18,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../utils/constants';
 
-
 export default function LoginScreen({ navigation }) {
   const { loginTrainer, loginUser } = useAuth();
+  const { width, height } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 900;
 
   const [role, setRole] = useState('user'); // 'user' o 'trainer'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { width, height } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 900;
 
   const handleRoleChange = (newRole) => {
     setRole(newRole);
     setEmail('');
     setPassword('');
     setShowPassword(false);
-    };
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -45,31 +44,30 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-        if (role === 'trainer') {
+      if (role === 'trainer') {
         await loginTrainer(email, password);
-        } else {
+      } else {
         await loginUser(email, password);
-        }
+      }
     } catch (error) {
-        console.log('Error completo:', JSON.stringify(error.response?.data));
-        console.log('Status:', error.response?.status);
-        const message = error.response?.data?.error || 'Error al iniciar sesión';
-        Alert.alert('Error', message);
+      const message = error.response?.data?.error || 'Error al iniciar sesión';
+      Alert.alert('Error', message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
 
+      {/* Fondo */}
       <Image
         source={require('../../../assets/gym.png')}
-        style={StyleSheet.absoluteFill}
+        style={styles.fill}
         resizeMode="cover"
       />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
+      <View style={[styles.fill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
 
       {!isDesktop && (
         <Image
@@ -83,9 +81,14 @@ export default function LoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}>
-
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TouchableOpacity
+            style={[styles.backButton, isDesktop && { top: 24 }]}
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
 
@@ -97,8 +100,12 @@ export default function LoginScreen({ navigation }) {
             />
           )}
 
-          <View style={[styles.formContainer, isDesktop ? styles.formDesktop : { marginTop: height * 0.45 }]}>
-
+          <View
+            style={[
+              styles.formContainer,
+              isDesktop ? styles.formDesktop : { marginTop: height * 0.45 },
+            ]}
+          >
             <Text style={styles.title}>Bienvenido</Text>
             <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
 
@@ -149,8 +156,8 @@ export default function LoginScreen({ navigation }) {
 
             {/* Contraseña */}
             <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+              <TextInput
                 style={styles.input}
                 placeholder="Contraseña"
                 placeholderTextColor={COLORS.textSecondary}
@@ -160,18 +167,19 @@ export default function LoginScreen({ navigation }) {
                 autoCorrect={false}
                 autoCapitalize="none"
                 textContentType="none"
-            />
-            <TouchableOpacity
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.eyeButton}
-            >
+              >
                 <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={COLORS.textSecondary}
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={COLORS.textSecondary}
                 />
-            </TouchableOpacity>
+              </TouchableOpacity>
             </View>
 
             {/* Botón login */}
@@ -219,70 +227,161 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.dark,
   },
-  backgroundImage: { ...StyleSheet.absoluteFillObject },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 30,
-    paddingTop: 100,
-    paddingBottom: 50,
+  fill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
+    height: '100%',
   },
-  titleContainer: {
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  scrollContentDesktop: {
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 40,
   },
-  title: {
-    fontSize: 60,
-    fontFamily: 'BebasNeue_400Regular',
-    color: COLORS.white,
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: COLORS.lightGray,
-    marginTop: 20,
-    letterSpacing: 2,
-    fontWeight: '300',
-  },
-  buttonsContainer: {
-    gap: 15,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
-  secondaryButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  footerText: {
-    color: COLORS.lightGray,
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 10,
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 8,
   },
   logo: {
-    marginTop: 50,
+    position: 'absolute',
+    top: 80,
+    left: 0,
+    right: 0,
+    width: 400,
+    height: 250,
+    alignSelf: 'center',
+    zIndex: 5,
+  },
+  logoDesktop: {
+    width: 260,
+    height: 150,
+    marginBottom: 12,
+  },
+  formContainer: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 30,
+    paddingTop: 35,
+    paddingBottom: 40,
+  },
+  formDesktop: {
+    width: '100%',
+    maxWidth: 440,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    alignSelf: 'center',
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    alignSelf: 'center',
+    color: COLORS.textSecondary,
+    marginBottom: 25,
+  },
+  roleSelector: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.input,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 25,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  roleButtonActive: {
+    backgroundColor: COLORS.silver,
+  },
+  roleText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  roleTextActive: {
+    color: COLORS.dark,
+    fontWeight: 'bold',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.input,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  eyeButton: {
+    padding: 5,
+  },
+  input: {
+    flex: 1,
+    height: 52,
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  loginButton: {
+    backgroundColor: COLORS.silver,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  loginButtonText: {
+    color: COLORS.dark,
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  forgotLink: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  forgotText: {
+    color: COLORS.silver,
+    fontSize: 14,
+  },
+  registerLink: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  registerText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+  },
+  registerTextBold: {
+    color: COLORS.silver,
+    fontWeight: 'bold',
   },
 });
