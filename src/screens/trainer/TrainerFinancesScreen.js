@@ -8,13 +8,14 @@ import {
   ActivityIndicator,
   StatusBar,
   RefreshControl,
-  Image
+  Image,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS, COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
-
+import useResponsive from '../../hooks/useResponsive';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -29,6 +30,7 @@ const fmt = (dateStr) => {
 
 export default function TrainerFinancesScreen({ navigation }) {
   const { user } = useAuth();
+  const { isDesktop } = useResponsive();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
@@ -81,30 +83,42 @@ export default function TrainerFinancesScreen({ navigation }) {
     return 'help-outline';
   };
 
+  const payments = data?.payments || [];
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.dark} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.headerDesktop]}>
         <Text style={styles.headerTitle}>Finanzas</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('TrainerProfile')}
-          style={styles.profileButton}
-        >
-          {user?.profile_photo ? (
-            <Image
-              source={{ uri: user.profile_photo }}
-              style={styles.headerProfileImage}
-            />
-          ) : (
-            <Ionicons
-              name="person-circle-outline"
-              size={38}
-              color={COLORS.silver}
-            />
+        <View style={styles.headerRight}>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              onPress={() => { setRefreshing(true); loadFinances(); }}
+              style={styles.refreshBtn}
+            >
+              <Ionicons name="refresh-outline" size={20} color={COLORS.silver} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('TrainerProfile')}
+            style={styles.profileButton}
+          >
+            {user?.profile_photo ? (
+              <Image
+                source={{ uri: user.profile_photo }}
+                style={styles.headerProfileImage}
+              />
+            ) : (
+              <Ionicons
+                name="person-circle-outline"
+                size={38}
+                color={COLORS.silver}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Selector de mes */}
@@ -142,8 +156,8 @@ export default function TrainerFinancesScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Resumen */}
-          <View style={styles.summaryContainer}>
-            <View style={styles.summaryCard}>
+          <View style={[styles.summaryContainer, isDesktop && styles.rowDesktop]}>
+            <View style={[styles.summaryCard, isDesktop && { flex: 2 }]}>
               <Ionicons name="cash-outline" size={28} color={COLORS.silver} />
               <Text style={styles.summaryAmount}>
                 ${(data?.total_collected || 0).toLocaleString('es-CO')}
@@ -151,7 +165,7 @@ export default function TrainerFinancesScreen({ navigation }) {
               <Text style={styles.summaryLabel}>Total recaudado</Text>
             </View>
 
-            <View style={styles.summaryRow}>
+            <View style={[styles.summaryRow, isDesktop && { flex: 2 }]}>
               <View style={styles.summarySmallCard}>
                 <Ionicons name="receipt-outline" size={22} color={COLORS.silver} />
                 <Text style={styles.summarySmallNumber}>{data?.count || 0}</Text>
@@ -160,7 +174,7 @@ export default function TrainerFinancesScreen({ navigation }) {
               <View style={styles.summarySmallCard}>
                 <Ionicons name="people-outline" size={22} color={COLORS.silver} />
                 <Text style={styles.summarySmallNumber}>
-                  {[...new Set((data?.payments || []).map(p => p.user_id))].length}
+                  {[...new Set(payments.map(p => p.user_id))].length}
                 </Text>
                 <Text style={styles.summarySmallLabel}>Usuarios</Text>
               </View>
@@ -168,14 +182,14 @@ export default function TrainerFinancesScreen({ navigation }) {
           </View>
 
           {/* Métodos de pago */}
-          {data?.payments?.length > 0 && (
-            <View style={styles.methodsContainer}>
+          {payments.length > 0 && (
+            <View style={[styles.methodsContainer, isDesktop && styles.rowDesktop]}>
               {['cash', 'transfer'].map(method => {
-                const methodPayments = data.payments.filter(p => p.payment_method === method);
+                const methodPayments = payments.filter(p => p.payment_method === method);
                 if (methodPayments.length === 0) return null;
                 const total = methodPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
                 return (
-                  <View key={method} style={styles.methodCard}>
+                  <View key={method} style={[styles.methodCard, isDesktop && { flex: 1 }]}>
                     <Ionicons name={getPaymentMethodIcon(method)} size={20} color={COLORS.silver} />
                     <View style={styles.methodInfo}>
                       <Text style={styles.methodLabel}>{getPaymentMethodLabel(method)}</Text>
@@ -193,40 +207,45 @@ export default function TrainerFinancesScreen({ navigation }) {
             Detalle de pagos
           </Text>
 
-          {!data?.payments?.length ? (
+          {payments.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="bar-chart-outline" size={52} color={COLORS.border} />
               <Text style={styles.emptyTitle}>Sin pagos</Text>
               <Text style={styles.emptySubtitle}>No hay pagos registrados en {MONTHS[month - 1]} {year}</Text>
             </View>
           ) : (
-            data.payments.map((payment, index) => (
-              <View key={payment.id || index} style={styles.paymentCard}>
-                <View style={styles.paymentLeft}>
-                  <View style={styles.paymentIconContainer}>
-                    <Ionicons
-                      name={getPaymentMethodIcon(payment.payment_method)}
-                      size={18}
-                      color={COLORS.silver}
-                    />
+            <View style={isDesktop ? styles.paymentsGrid : undefined}>
+              {payments.map((payment, index) => (
+                <View
+                  key={payment.id || index}
+                  style={[styles.paymentCard, isDesktop && { width: '49%' }]}
+                >
+                  <View style={styles.paymentLeft}>
+                    <View style={styles.paymentIconContainer}>
+                      <Ionicons
+                        name={getPaymentMethodIcon(payment.payment_method)}
+                        size={18}
+                        color={COLORS.silver}
+                      />
+                    </View>
+                    <View style={styles.paymentInfo}>
+                      <Text style={styles.paymentUser}>
+                        {payment.user_name || `Usuario #${payment.user_id}`}
+                      </Text>
+                      <Text style={styles.paymentDates}>
+                        {fmt(payment.start_date)} → {fmt(payment.end_date)}
+                      </Text>
+                      <Text style={styles.paymentMethod}>
+                        {getPaymentMethodLabel(payment.payment_method)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentUser}>
-                      {payment.user_name || `Usuario #${payment.user_id}`}
-                    </Text>
-                    <Text style={styles.paymentDates}>
-                      {fmt(payment.start_date)} → {fmt(payment.end_date)}
-                    </Text>
-                    <Text style={styles.paymentMethod}>
-                      {getPaymentMethodLabel(payment.payment_method)}
-                    </Text>
-                  </View>
+                  <Text style={styles.paymentAmount}>
+                    ${(payment.amount || 0).toLocaleString('es-CO')}
+                  </Text>
                 </View>
-                <Text style={styles.paymentAmount}>
-                  ${(payment.amount || 0).toLocaleString('es-CO')}
-                </Text>
-              </View>
-            ))
+              ))}
+            </View>
           )}
 
           <View style={{ height: 40 }} />
@@ -239,21 +258,25 @@ export default function TrainerFinancesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 10, width: '100%', maxWidth: 980, alignSelf: 'center' },
+  headerDesktop: { paddingTop: 28 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.text },
-  monthSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, marginBottom: 8 },
+  refreshBtn: { backgroundColor: COLORS.card, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
+  monthSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, marginBottom: 8, width: '100%', maxWidth: 980, alignSelf: 'center' },
   monthArrow: { backgroundColor: COLORS.card, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
   monthArrowDisabled: { opacity: 0.4 },
   monthCenter: { alignItems: 'center' },
   monthText: { fontSize: 20, fontWeight: 'bold', color: COLORS.text },
   yearText: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
-  scrollContent: { paddingHorizontal: 20 },
+  scrollContent: { paddingHorizontal: 20, width: '100%', maxWidth: 980, alignSelf: 'center' },
   summaryContainer: { gap: 10, marginBottom: 20 },
-  summaryCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 24, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: COLORS.border },
+  rowDesktop: { flexDirection: 'row', alignItems: 'stretch' },
+  summaryCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: COLORS.border },
   summaryAmount: { fontSize: 36, fontWeight: 'bold', color: COLORS.text },
   summaryLabel: { fontSize: 13, color: COLORS.textSecondary },
   summaryRow: { flexDirection: 'row', gap: 10 },
-  summarySmallCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 16, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: COLORS.border },
+  summarySmallCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: COLORS.border },
   summarySmallNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.text },
   summarySmallLabel: { fontSize: 12, color: COLORS.textSecondary },
   methodsContainer: { gap: 8, marginBottom: 20 },
@@ -263,6 +286,7 @@ const styles = StyleSheet.create({
   methodCount: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   methodAmount: { fontSize: 16, fontWeight: 'bold', color: COLORS.silver },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.text, marginBottom: 12 },
+  paymentsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   paymentCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   paymentLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   paymentIconContainer: { backgroundColor: COLORS.darkGray, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
@@ -279,7 +303,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    },
+  },
   headerProfileImage: {
     width: 38,
     height: 38,
